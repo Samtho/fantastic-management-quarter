@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="icon" type="image/png" href="management.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PI Planning Lite — Q2 2026 · Giunti Magento</title>
+  <title>PI Planning Lite — Template</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="management.png">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Noto Sans', sans-serif; min-height: 100vh; overflow: hidden; }
@@ -65,24 +65,121 @@ function getSC(theme, colNames) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // INITIAL DATA
 // ═══════════════════════════════════════════════════════════════════════════════
-const INITIAL_TEAM = [
-  { id: 'guillermo', name: 'Guillermo', color: '#3b82f6', since: 'Mar 31', capMult: 0.6, note: 'Tech lead / peer-programming', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null },
-  { id: 'jesus', name: 'Jesús', color: '#8b5cf6', since: 'Mar 31', capMult: 1.0, note: '', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null },
-  { id: 'alessandro', name: 'Alessandro', color: '#06b6d4', since: 'Mar 31', capMult: 1.0, note: '', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null },
-  { id: 'gonzalo', name: 'Gonzalo (tentativo)', color: '#f59e0b', since: '~Mar 23', capMult: 0.4, note: 'Negocio Magento / onboarding', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null },
-  { id: 'rene', name: 'René', color: '#f43f5e', since: 'Mar 31', capMult: 1.0, note: 'Contratista externo', type: 'external', monthlyCost: 0, hourlyRate: 0, customSizes: null },
-];
+const INITIAL_TEAM = [];
 
+// Non-dev owners: appear in epic/story owner dropdowns but don't affect capacity calculations
+const INITIAL_STAKEHOLDERS = [];
+
+// ⚙️ SPRINT SETUP — sprint date display labels (auto-updated from Config > Quarter Start)
+// When the user sets config.quarterStart in the Setup Wizard or Config panel,
+// call updateSprintDates(dateStr) to recalculate all sprint labels and SPRINT_DATES.
 const SPRINTS = [
-  { id: 's0', label: 'S0', full: 'Sprint 0', dates: '17–31 Mar', current: true },
-  { id: 's1', label: 'S1', full: 'Sprint 1', dates: '31 Mar–11 Abr' },
-  { id: 's2', label: 'S2', full: 'Sprint 2', dates: '14–25 Abr' },
-  { id: 's3', label: 'S3', full: 'Sprint 3', dates: '28 Abr–9 May' },
-  { id: 's4', label: 'S4', full: 'Sprint 4', dates: '12–23 May' },
-  { id: 's5', label: 'S5', full: 'Sprint 5', dates: '26 May–6 Jun' },
-  { id: 's6', label: 'S6', full: 'Sprint 6', dates: '9–20 Jun' },
+  { id: 's0', label: 'S0', full: 'Sprint 0', dates: 'TBD', current: false },
+  { id: 's1', label: 'S1', full: 'Sprint 1', dates: 'TBD' },
+  { id: 's2', label: 'S2', full: 'Sprint 2', dates: 'TBD' },
+  { id: 's3', label: 'S3', full: 'Sprint 3', dates: 'TBD' },
+  { id: 's4', label: 'S4', full: 'Sprint 4', dates: 'TBD' },
+  { id: 's5', label: 'S5', full: 'Sprint 5', dates: 'TBD' },
+  { id: 's6', label: 'S6', full: 'Sprint 6', dates: 'TBD' },
 ];
 const SI = {}; SPRINTS.forEach((s, i) => { SI[s.id] = i; });
+
+// Computes sprint start/end dates from a quarter start date string ('YYYY-MM-DD').
+// Each sprint = 10 working days = 14 calendar days. S0 and S1 share the same start.
+function computeSprintDates(quarterStartStr) {
+  if (!quarterStartStr) return Array(7).fill({ s: new Date(0), e: new Date(0) });
+  const base = new Date(quarterStartStr + 'T00:00:00');
+  const offsets = [0, 14, 28, 42, 56, 70, 84]; // sprint start day offsets
+  return offsets.map((off, i) => {
+    const s = new Date(base); s.setDate(base.getDate() + off);
+    const e = new Date(s); e.setDate(s.getDate() + 13);
+    return { s, e };
+  });
+}
+
+// Formats a Date as 'D Mon' (e.g. '31 Mar')
+function fmtSprintDate(d) {
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return d.getDate() + ' ' + months[d.getMonth()];
+}
+
+// Updates SPRINTS[].dates display labels and SPRINT_DATES from a quarterStart string.
+// Called on app load and when the user changes config.quarterStart.
+function applyQuarterStart(quarterStartStr) {
+  if (!quarterStartStr) return;
+  const dates = computeSprintDates(quarterStartStr);
+  SPRINTS.forEach((sp, i) => {
+    sp.dates = fmtSprintDate(dates[i].s) + '–' + fmtSprintDate(dates[i].e);
+    sp.current = false;
+  });
+  SPRINT_DATES.splice(0, SPRINT_DATES.length, ...dates);
+  // Mark the current sprint
+  const now = new Date(); now.setHours(0,0,0,0);
+  SPRINT_DATES.forEach(({ s, e }, i) => { if (now >= s && now <= e) SPRINTS[i].current = true; });
+}
+
+// Real date ranges — populated by applyQuarterStart() from config.quarterStart
+// Declared as 'let' so applyQuarterStart() can splice it in place
+let SPRINT_DATES = Array(7).fill(null).map(() => ({ s: new Date(0), e: new Date(0) }));
+
+// Returns x-pixel position of today in the timeline, or null if outside Q2
+function getTodayX(padL, colW) {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  for (let i = 0; i < SPRINT_DATES.length; i++) {
+    const { s, e } = SPRINT_DATES[i];
+    if (now >= s && now <= e) return padL + (i + (now - s) / (e - s)) * colW;
+  }
+  return null;
+}
+
+// Returns SPRINT label (e.g. "S1") for a given date string, or null
+function sprintLabelForDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T12:00:00');
+  for (let i = 0; i < SPRINT_DATES.length; i++) {
+    const { s, e } = SPRINT_DATES[i];
+    if (d >= s && d <= e) return SPRINTS[i].label;
+  }
+  return null;
+}
+
+// Returns true if the given sprint's end date is in the past
+function isPastSprint(sprintId) {
+  const idx = SI[sprintId];
+  if (idx === undefined) return false;
+  const { e } = SPRINT_DATES[idx];
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return now > e;
+}
+
+// Returns stories that are not done but were planned for a sprint that has already ended.
+// Excludes deferred epics. Format: [{story, epic}]
+function getCarryOverStories(epics) {
+  const result = [];
+  epics.filter(ep => ep.status !== 'deferred').forEach(epic => {
+    epic.stories.forEach(story => {
+      if (!story.done && story.sprint && isPastSprint(story.sprint)) {
+        result.push({ story, epic });
+      }
+    });
+  });
+  return result;
+}
+
+// Returns capacity factor [0..1] for a member in a given sprint.
+// Supports legacy binary format (string IDs → factor 0) and new format ({sprintId, days}).
+// Assumes 10 working days per sprint. factor = max(0, 1 - days/10).
+function getMemberSprintFactor(member, sprintId) {
+  const abs = member.absences || [];
+  for (const a of abs) {
+    if (typeof a === 'string') {
+      if (a === sprintId) return 0;          // legacy: full absence
+    } else if (a && a.sprintId === sprintId) {
+      return Math.max(0, 1 - (a.days || 0) / 10);  // new: proportional
+    }
+  }
+  return 1;
+}
 
 const DEFAULT_CONFIG = {
   bufferPct: 20,
@@ -95,159 +192,39 @@ const DEFAULT_CONFIG = {
   epicRowH: 40,
   epicLabelSize: 12,
   depColor: '#f59e0b',
+  rowSepColor: '#334155',    // color de líneas separadoras entre épicas en Timeline
+  rowSepStyle: 'solid',      // estilo: solid | dashed | dotted | double
+  rowSepWidth: 1,            // grosor separadores en px (1–4)
+  todayLineColor: '#f43f5e', // color de la línea "Hoy" en Timeline
+  todayLineStyle: 'solid',   // estilo: solid | dashed | dotted
+  todayLineWidth: 2,         // grosor línea "Hoy" en px (1–5)
   showLogros: false,   // oculto por defecto (privacidad en screen sharing)
+  carloViewLabel: 'Vista de Stakeholder', // nombre del botón de presentación en tab Semanal
+  // ── Branding / identity (set during onboarding) ───────────────────────────
+  companyName:     '',          // e.g. 'Acme Corp'
+  channelName:     '',          // e.g. 'Mobile App' or 'E-commerce'
+  stakeholderName: 'Stakeholder', // e.g. 'Carlo' — who you present to
+  quarterLabel:    'Q1',        // e.g. 'Q2'
+  quarterYear:     '2026',
+  quarterStart:    '',          // ISO date 'YYYY-MM-DD' — set in onboarding
 };
 
 // Q3 overflow zone columns shown after Sprint 6 in Timeline (grayed out)
 const Q3_COLS = 2;
 
-const INITIAL_EPICS = [
-  { id: 'sso-dante', label: 'Interfaz Dante + SSO', sublabel: 'Cierre migración', status: 'confirmed', size: 'S', owners: ['guillermo'], ss: 's1', se: 's1', deps: [], confidence: 90,
-    objective: 'Cerrar interfaz de productos Dante, tabla intersección y SSO. Pruebas con Federica el lunes.',
-    features: ['Tabla intersección productos-profesiones', 'Pruebas funcionales SSO', 'Carga de productos de prueba'],
-    notes: 'Sesión con Federica el lunes para cargar 2 productos de cada tipo y validar.',
-    stories: [
-      { id: 'sso-1', title: 'Completar tabla intersección productos-profesiones', size: 'M', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'sso-2', title: 'Cargar productos de prueba y validar con Federica', size: 'S', owner: 'guillermo', sprint: 's1', done: false },
-    ],
-  },
-  { id: 'cupones', label: 'Cupones', sublabel: 'Cierre migración TDZ', status: 'confirmed', size: 'S', owners: ['alessandro'], ss: 's1', se: 's1', deps: [], confidence: 85,
-    objective: 'Cerrar pruebas de cupones con Federica. Petición de Italia.', features: [], notes: 'Pruebas con Federica la semana que viene.',
-    stories: [
-      { id: 'cup-1', title: 'Validar lógica de cupones con Federica en staging', size: 'S', owner: 'alessandro', sprint: 's1', done: false },
-    ],
-  },
-  { id: 'vertex', label: 'Analítica Vertex', sublabel: 'Validación y producción', status: 'confirmed', size: 'S', owners: ['guillermo'], ss: 's1', se: 's1', deps: [], confidence: 90,
-    objective: 'Verificar recarga de datos Vertex y poner en producción.', features: [], notes: 'Verificación funcional con Carlos lunes/martes. Producción miércoles.',
-    stories: [
-      { id: 'vtx-1', title: 'Verificación funcional Vertex con Carlos', size: 'S', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'vtx-2', title: 'Deploy Vertex a producción', size: 'S', owner: 'guillermo', sprint: 's1', done: false },
-    ],
-  },
-  { id: 'carga-contenido', label: 'Carga de contenido catálogo', sublabel: 'Atributos + productos', status: 'confirmed', size: 'M', owners: ['guillermo'], ss: 's1', se: 's2', deps: [], confidence: 75,
-    objective: 'Definir formato archivos, confirmar atributos y cargar productos para focus group de Carlo.',
-    features: ['Confirmar atributos', 'Transformar Excel (IA)', 'Carga piloto', 'Carga masiva'],
-    notes: 'Carlo quiere esto la semana que viene. Los Excel están pivoteados.',
-    stories: [
-      { id: 'carg-1', title: 'Confirmar atributos definitivos con equipo', size: 'S', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'carg-2', title: 'Transformar formato Excel de productos con IA', size: 'M', owner: 'jesus', sprint: 's1', done: false },
-      { id: 'carg-3', title: 'Carga piloto de 1 producto con variantes', size: 'S', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'carg-4', title: 'Carga masiva post-validación', size: 'M', owner: 'jesus', sprint: 's2', done: false },
-    ],
-  },
-  { id: 'tokenizacion', label: 'Tokenización de tarjetas', sublabel: 'Pago automático: Fase 1', status: 'confirmed', size: 'M', owners: ['guillermo'], ss: 's1', se: 's2', deps: [], confidence: 70,
-    objective: 'Tokenizar tarjeta de crédito para habilitar cobros recurrentes.', features: ['Vault seguro', 'Cobro automático', 'UI tarjetas guardadas'],
-    notes: 'Fase 1 de automatización. Prerequisito de renovación CC y PayPal.',
-    stories: [
-      { id: 'tok-1', title: 'Configurar vault de pago seguro con Nexi', size: 'L', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'tok-2', title: 'Implementar flujo de tokenización en checkout', size: 'M', owner: 'guillermo', sprint: 's1', done: false },
-      { id: 'tok-3', title: 'Crear UI de tarjetas guardadas en Mi Cuenta', size: 'M', owner: 'alessandro', sprint: 's2', done: false },
-    ],
-  },
-  { id: 'renovacion-cc', label: 'Renovación con tarjeta de crédito', sublabel: 'Automatización: Fase 2', status: 'confirmed', size: 'L', owners: ['guillermo'], ss: 's2', se: 's4', deps: ['tokenizacion'], confidence: 55,
-    objective: 'Proceso automático de renovación de suscripción/créditos con tarjeta tokenizada.',
-    features: [], notes: 'Fase 2. Depende de tokenización. Carlo quiere esto cerrado en Q2.',
-    stories: [
-      { id: 'ren-1', title: 'Diseñar reglas de negocio para renovación automática', size: 'M', owner: 'guillermo', sprint: 's2', done: false },
-      { id: 'ren-2', title: 'Implementar job de cobro recurrente con tarjeta tokenizada', size: 'L', owner: 'guillermo', sprint: 's3', done: false },
-      { id: 'ren-3', title: 'Crear notificaciones email pre/post renovación', size: 'S', owner: 'jesus', sprint: 's3', done: false },
-      { id: 'ren-4', title: 'UI de gestión de suscripciones activas en Mi Cuenta', size: 'M', owner: 'alessandro', sprint: 's4', done: false },
-    ],
-  },
-  { id: 'renovacion-paypal', label: 'Renovación automática PayPal', sublabel: 'Extensión pagos', status: 'confirmed', size: 'M', owners: ['guillermo'], ss: 's4', se: 's5', deps: ['renovacion-cc'], confidence: 40,
-    objective: 'Extender renovación automática para PayPal.', features: [], notes: 'Meeting con Tomaso pendiente.',
-    stories: [
-      { id: 'pp-1', title: 'Investigar API PayPal Billing Agreements', size: 'S', owner: 'guillermo', sprint: 's4', done: false },
-      { id: 'pp-2', title: 'Implementar flujo de renovación automática PayPal', size: 'L', owner: 'jesus', sprint: 's5', done: false },
-      { id: 'pp-3', title: 'Gestionar cancelaciones desde PayPal', size: 'M', owner: 'jesus', sprint: 's5', done: false },
-    ],
-  },
-  { id: 'ukrania', label: 'Lanzamiento Ucrania', sublabel: 'En template actual', status: 'confirmed', size: 'S', owners: ['jesus'], ss: 's2', se: 's2', deps: [], confidence: 95,
-    objective: 'Publicar site de Ucrania. Carga mayor es business.', features: [], notes: 'Esfuerzo técnico pequeño.',
-    stories: [{ id: 'ukr-1', title: 'Crear store view y configuración Ucrania', size: 'S', owner: 'jesus', sprint: 's2', done: false }],
-  },
-  { id: 'bce', label: 'Conexión Business Central España', sublabel: 'Integración ERP', status: 'confirmed', size: 'M', owners: [], ss: null, se: null, deps: [], confidence: 30,
-    objective: 'Sincronizar pedidos y facturación entre Magento y BC España.', features: [], notes: 'No es responsabilidad directa del equipo. Esfuerzo por estimar.',
-    stories: [
-      { id: 'bce-1', title: 'Definir especificación técnica integración BC España', size: 'M', owner: 'gonzalo', sprint: null, done: false },
-      { id: 'bce-2', title: 'Desarrollar ETL de pedidos Magento → BC', size: 'L', owner: 'gonzalo', sprint: null, done: false },
-    ],
-  },
-  { id: 'social-login', label: 'Login con Redes Sociales', sublabel: 'OAuth Google / LinkedIn', status: 'confirmed', size: 'M', owners: ['alessandro'], ss: 's3', se: 's4', deps: [], confidence: 75,
-    objective: 'Reducir fricción con autenticación Google y LinkedIn.', features: ['OAuth Google', 'OAuth LinkedIn', 'Migración cuentas'],
-    notes: '',
-    stories: [
-      { id: 'sl-1', title: 'Implementar OAuth Google', size: 'M', owner: 'alessandro', sprint: 's3', done: false },
-      { id: 'sl-2', title: 'Implementar OAuth LinkedIn', size: 'S', owner: 'alessandro', sprint: 's3', done: false },
-      { id: 'sl-3', title: 'Migración y vinculación cuentas existentes', size: 'M', owner: 'jesus', sprint: 's4', done: false },
-    ],
-  },
-  { id: 'odoo', label: 'Conexión Magento – Odoo', sublabel: 'ETL bidireccional', status: 'confirmed', size: 'L', owners: ['guillermo'], ss: 's3', se: 's5', deps: [], confidence: 50,
-    objective: 'Sync bidireccional Magento-Odoo. Priorizado sobre PIM por Carlo.', features: [], notes: 'Importante para facturación LatAm.',
-    stories: [
-      { id: 'odoo-1', title: 'Definir mapping bidireccional Magento-Odoo', size: 'M', owner: 'guillermo', sprint: 's3', done: false },
-      { id: 'odoo-2', title: 'Desarrollar sync pedidos Magento → Odoo', size: 'L', owner: 'gonzalo', sprint: 's4', done: false },
-      { id: 'odoo-3', title: 'Desarrollar sync respuestas Odoo → Magento', size: 'L', owner: 'gonzalo', sprint: 's5', done: false },
-    ],
-  },
-  { id: 'backoffice', label: 'Módulo gestión back office', sublabel: 'Nuevo miembro', status: 'deferred', size: 'M', owners: ['gonzalo'], ss: 's2', se: 's3', deps: [], confidence: 50,
-    objective: 'Módulo de gestión back office. Espera onboarding.', features: [], notes: '~15 días onboarding.',
-    stories: [
-      { id: 'bo-1', title: 'Análisis de requerimientos del módulo', size: 'M', owner: 'gonzalo', sprint: 's2', done: false },
-      { id: 'bo-2', title: 'Desarrollo del módulo de gestión back office', size: 'L', owner: 'gonzalo', sprint: 's3', done: false },
-    ],
-  },
-  { id: 'pim', label: 'PIM – Magento', sublabel: 'ETL catálogo', status: 'deferred', size: 'L', owners: [], ss: null, se: null, deps: [], confidence: 20,
-    objective: 'Integrar PIM como fuente única de verdad.', features: [], notes: 'Standby per Carlo. Odoo tiene prioridad.', stories: [] },
-  { id: 'rollout-template', label: 'Roll out nuevo template', sublabel: 'Plan por países', status: 'deferred', size: 'XL', owners: ['guillermo'], ss: null, se: null, deps: [], confidence: 15,
-    objective: 'Despliegue nuevo theme. Durará todo el año.', features: [], notes: 'Plan por países. Posiblemente 1 país en Q2.', stories: [] },
-  { id: 'paises', label: 'Páginas países sin operación', sublabel: 'Expansión geográfica', status: 'deferred', size: 'S', owners: [], ss: null, se: null, deps: [], confidence: 10,
-    objective: 'Landing pages para mercados sin operación.', features: [], notes: 'Diferido.', stories: [] },
-  { id: 'autores', label: 'Página de Autores', sublabel: 'En todos los sites', status: 'deferred', size: 'S', owners: [], ss: null, se: null, deps: [], confidence: 10,
-    objective: 'Páginas de perfil de autor.', features: [], notes: 'Dejarlo para después.', stories: [] },
-  { id: 'ia-agents', label: 'IA Agents', sublabel: 'Exploración', status: 'deferred', size: null, owners: [], ss: null, se: null, deps: [], confidence: 5,
-    objective: 'Agentes IA integrados.', features: [], notes: 'Exploratorio.', stories: [] },
-  { id: 'ab-testing', label: 'Herramienta A/B Testing', sublabel: 'Optimización conversión', status: 'deferred', size: null, owners: [], ss: null, se: null, deps: [], confidence: 5,
-    objective: 'A/B testing.', features: [], notes: '', stories: [] },
-];
+const INITIAL_EPICS = [];
 
 const INITIAL_AGENDA = [
-  { id: 'a0', title: 'Objetivo de la sesión', desc: 'Alinear Q2: épicas desglosadas, capacidad mapeada, primer sprint planificado.', time: 5, done: false },
-  { id: 'a1', title: 'Cierre sprint actual', desc: 'Sprint cierra 27 mar. Pendientes: template, Vertex, SSO/cupones con Federica. Gonzalo se incorpora el lunes.', time: 10, done: false },
-  { id: 'a2', title: 'Prioridades confirmadas Q2', desc: 'Revisar épicas confirmadas. Odoo priorizado sobre PIM por Carlo. Rollout template como plan por países.', time: 15, done: false },
-  { id: 'a3', title: 'Desglose de épicas principales', desc: 'Objetivo, features, talla (S/M/L/XL), owner, dependencias. Cadena: Tokenización → Renovación CC → PayPal.', time: 20, done: false },
-  { id: 'a4', title: 'Capacidad del equipo Q2', desc: 'Guille reducido (peer-programming). Gonzalo en ramp-up. Regla 80-20 para imprevistos.', time: 5, done: false },
-  { id: 'a5', title: 'Confidence vote', desc: 'Votar confianza (%) por épica para calcular score global de entrega Q2.', time: 5, done: false },
-  { id: 'a6', title: 'Acuerdos y próximos pasos', desc: 'Épicas confirmadas, diferidas, action items. Sprint 1 Q2 arranca 31 marzo.', time: 5, done: false },
+  { id: 'a0', title: 'Objetivo de la sesión',       desc: 'Alinear el quarter: épicas priorizadas, capacidad mapeada, primer sprint planificado.', time: 5,  done: false },
+  { id: 'a1', title: 'Repaso del quarter anterior', desc: 'Estado de entregas previas. Pendientes que arrastran.', time: 10, done: false },
+  { id: 'a2', title: 'Épicas confirmadas',           desc: 'Revisar épicas confirmadas para este quarter.', time: 15, done: false },
+  { id: 'a3', title: 'Desglose de épicas',           desc: 'Objetivo, features, talla (S/M/L/XL), owner, dependencias.', time: 20, done: false },
+  { id: 'a4', title: 'Capacidad del equipo',         desc: 'Disponibilidad del equipo. Regla 80-20 para imprevistos.', time: 5,  done: false },
+  { id: 'a5', title: 'Confidence vote',              desc: 'Votar confianza (%) por épica para calcular score global.', time: 5,  done: false },
+  { id: 'a6', title: 'Acuerdos y próximos pasos',    desc: 'Épicas confirmadas, diferidas, action items. Fecha de arranque sprint 1.', time: 5, done: false },
 ];
 
-const INITIAL_OKRS = [
-  {
-    id: 'o1', title: 'Canal e-commerce como motor de ingresos autónomo',
-    description: 'Formalizar y automatizar los flujos de pago y suscripción para reducir operaciones manuales.',
-    keyResults: [
-      { id: 'kr1', title: 'Renovación automática con tarjeta en producción', target: 1, current: 0, unit: 'feature', epicId: 'renovacion-cc', owner: 'guillermo', status: 'pending' },
-      { id: 'kr2', title: 'Renovación automática PayPal en producción', target: 1, current: 0, unit: 'feature', epicId: 'renovacion-paypal', owner: 'guillermo', status: 'pending' },
-      { id: 'kr3', title: 'Tokenización de tarjetas activa en checkout', target: 1, current: 0, unit: 'feature', epicId: 'tokenizacion', owner: 'guillermo', status: 'pending' },
-    ],
-  },
-  {
-    id: 'o2', title: 'Integración de sistemas ERP y catálogo',
-    description: 'Conectar Magento con Odoo y los sistemas de contenido para una operación escalable.',
-    keyResults: [
-      { id: 'kr4', title: 'Sync bidireccional Magento–Odoo operativo', target: 1, current: 0, unit: 'feature', epicId: 'odoo', owner: 'guillermo', status: 'pending' },
-      { id: 'kr5', title: 'Catálogo de productos cargado y validado', target: 100, current: 0, unit: '%', epicId: 'carga-contenido', owner: 'jesus', status: 'pending' },
-    ],
-  },
-  {
-    id: 'o3', title: 'Expansión y experiencia de usuario',
-    description: 'Nuevos mercados activos y mejora de la autenticación para reducir fricción.',
-    keyResults: [
-      { id: 'kr6', title: 'Login social disponible (Google + LinkedIn)', target: 2, current: 0, unit: 'métodos', epicId: 'social-login', owner: 'alessandro', status: 'pending' },
-      { id: 'kr7', title: 'Site Ucrania en producción', target: 1, current: 0, unit: 'site', epicId: 'ukrania', owner: 'jesus', status: 'pending' },
-    ],
-  },
-];
+const INITIAL_OKRS = [];
 
 const KR_STATUSES = [
   { id: 'pending', label: 'Pendiente', color: '#64748b' },
@@ -256,32 +233,7 @@ const KR_STATUSES = [
   { id: 'done', label: 'Completado', color: '#3b82f6' },
 ];
 
-const INITIAL_WEEKLY_SYNCS = [
-  {
-    id: 'wk-23mar',
-    date: '2026-03-23',
-    sprint: '',
-    sprintNum: '',
-    sprintObjective: 'Cierre sprint actual · Galileo, Vertex, Dante, Renovación',
-    topics: 'Estado nuevo template (desktop/mobile), Dante validation, Vertex entornos, Atributos carga, Security update, Renovación automática scope, Cambio de equipo',
-    thisWeek: 'Template desktop completado. Mobile en validación (Gizem). Vertex prod completado. Security update revisado con Gonzalo. Reunión Renovación Automática con Federica celebrada.',
-    nextWeek: 'Federica envía productos de prueba para carga atributos. René completa fixes mobile. Dante validaciones pendientes por países. Ignacio onboarding.',
-    carloDecisions: 'Confirmado: Ignacio reemplaza a Dan. Scope Renovación Automática: planes cerrados, ciclo 12 meses. Atributos = próximo paso crítico.',
-    actions: [
-      { id: 'a23-1', text: 'Nuevo template — Desktop', owner: 'René', status: 'completado', priority: 'alta', notes: 'Bugs CSS y modal corregidos. Confirmado Carlo 19-mar.', epicId: 'rollout-template' },
-      { id: 'a23-2', text: 'Nuevo template — Mobile (validación técnica)', owner: 'René / Gizem', status: 'en-curso', priority: 'alta', notes: 'Jesús movió modal a validación. Gizem revisando. Confirmar bug CSS staging vs dispositivo real.', epicId: 'rollout-template' },
-      { id: 'a23-3', text: 'Nuevo template — Validación marketing', owner: 'Federica', status: 'pendiente', priority: 'alta', notes: 'Blocked: espera confirmación IT que fixes críticos OK. Samuel avisa a Federica.', epicId: 'rollout-template' },
-      { id: 'a23-4', text: 'Carga atributos — Ficheros enviados a Federica', owner: 'Guillermo / Jesús', status: 'bloqueado', priority: 'alta', notes: 'Ficheros enviados 19-mar. Esperando 2 productos de prueba de Federica. Desbloquea Vertex staging/preprod.', epicId: 'carga-contenido' },
-      { id: 'a23-5', text: 'Dante — Validación compras todos los países', owner: 'Alejandro / Jesús / Guillermo', status: 'en-curso', priority: 'alta', notes: 'Alejandro testing group product list (20-mar). Pendiente validaciones que no completó Dan: Bulgaria, Turkey, Chile, España.', epicId: 'sso-dante' },
-      { id: 'a23-6', text: 'Vertex — Producción', owner: 'Jesús / Guillermo', status: 'completado', priority: 'alta', notes: 'App/buckets producción completado. Click events: Guillermo trabajando con Jesús en fix.', epicId: 'vertex' },
-      { id: 'a23-7', text: 'Vertex — Configurar staging y preprod', owner: 'Jesús', status: 'bloqueado', priority: 'alta', notes: 'Bloqueado esperando carga de productos con nuevos atributos en staging/preprod.', epicId: 'vertex' },
-      { id: 'a23-8', text: 'Magento security update (2.4.6-p14)', owner: 'Guillermo', status: 'completado', priority: 'alta', notes: 'Revisado con Gonzalo 20-mar. Seguro para subir a producción.', epicId: '' },
-      { id: 'a23-9', text: 'SEO overwrite — URL aliases script', owner: 'Guillermo', status: 'en-curso', priority: 'media', notes: 'Funcionalidad lista. Requiere ejecutar script en producción con precaución. Mover a UAT.', epicId: '' },
-      { id: 'a23-10', text: 'Renovación automática — Refinamiento de scope', owner: 'Samuel / Guillermo', status: 'en-curso', priority: 'media', notes: 'Reunión 18-mar celebrada con Federica. Scope: planes cerrados, 12 meses, PayPal vs tarjeta pendiente. Guillermo revisa flujos email.', epicId: 'renovacion-cc' },
-      { id: 'a23-11', text: 'Cambio desarrollador (Dan → Ignacio)', owner: 'Carlo', status: 'en-curso', priority: 'alta', notes: 'Dan no continúa. Carlo contratando Ignacio. Impacto: validaciones Dante reasignadas a Jesús/Guillermo.', epicId: '' },
-    ]
-  }
-];
+const INITIAL_WEEKLY_SYNCS = [];
 
 // ── DEMO MODE ──────────────────────────────────────────────────────────────
 const DEMO_EPIC_NAMES = [
@@ -334,62 +286,34 @@ const demoifyOkrs = (okrs) => okrs.map((okr, i) => ({
   })),
 }));
 
-const LS_KEY = 'pi-planning-q2-2026-v4';
+const LS_KEY = 'pi-planning-lite-v1';
 
 // ─── Initial Revenue data (keyed by epicId) ───────────────────────────────────
 const INITIAL_REVENUE = {};
 // shape: { [epicId]: { impact: 'alta'|'media'|'baja'|null, type: string, metric: string, target: string, estimate: number, notes: string } }
 
 // ─── Initial Goals / Metas ────────────────────────────────────────────────────
-const INITIAL_GOALS = [
-  // Producto
-  { id: 'g1',  category: 'Producto', text: 'Lanzar Renovación Automática (Fase 1: tarjeta de crédito) en producción', description: 'PRD v3.1 aprobado. Depende de tokenización. Carlo lo quiere cerrado en Q2.', deadline: '2026-05-31', status: 'en-curso',   progress: 35, notes: '' },
-  { id: 'g2',  category: 'Producto', text: 'Completar migración Interfaz Dante + SSO',                                description: 'Pruebas con Federica. Crítico para Ignacio y el equipo de Dante.', deadline: '2026-04-11', status: 'en-curso',   progress: 50, notes: '' },
-  { id: 'g3',  category: 'Producto', text: 'Lanzar nuevo template Mobile a producción',                               description: 'René en producción. Sprint 0. Migración completa del canal a nuevo diseño responsive.', deadline: '2026-03-31', status: 'en-curso',   progress: 80, notes: '' },
-  { id: 'g4',  category: 'Producto', text: 'Definir y cerrar PRD de Tokenización de tarjetas',                       description: 'Pre-requisito para Renovación CC y PayPal. Incluye vault seguro con Nexi.', deadline: '2026-04-30', status: 'pendiente',  progress: 10, notes: '' },
-  { id: 'g5',  category: 'Producto', text: 'Cerrar PI Planning Q2 con equipo alineado',                              description: 'Épicas priorizadas, capacidad confirmada y OKRs definidos para Q2 2026.', deadline: '2026-04-01', status: 'en-curso',   progress: 70, notes: '' },
-  // Negocio
-  { id: 'g6',  category: 'Negocio',  text: 'Incrementar tasa de renovación de suscripciones +5% con auto-renewal',  description: 'KPI principal de Renovación Automática. Medir antes vs. después del lanzamiento.', deadline: '2026-06-30', status: 'pendiente',  progress: 0,  notes: '' },
-  { id: 'g7',  category: 'Negocio',  text: 'Incrementar tasa de conversión checkout +1% (España)',                   description: 'Baseline actual pendiente de medir. Impactado por template mobile y cupones.', deadline: '2026-06-30', status: 'pendiente',  progress: 0,  notes: '' },
-  { id: 'g8',  category: 'Negocio',  text: 'Lanzar Giunti en Ucrania (store view operativo)',                        description: 'S2-S3. Jesús. Requiere contenido traducido y configuración de impuestos.', deadline: '2026-05-09', status: 'pendiente',  progress: 5,  notes: '' },
-  { id: 'g9',  category: 'Negocio',  text: 'Sincronización Magento–Odoo operativa para facturación LatAm',           description: 'Business Central España primero. Luego extender a LatAm para cerrar ciclo contable.', deadline: '2026-06-30', status: 'pendiente',  progress: 0,  notes: '' },
-  // Equipo
-  { id: 'g10', category: 'Equipo',   text: 'Documentar todos los flujos Jira del equipo (Galileo)',                  description: 'Flujos de épicas, bugs, spike y subtareas. Referencia en galileo-workflow.html.', deadline: '2026-04-30', status: 'en-curso',   progress: 60, notes: '' },
-  { id: 'g11', category: 'Equipo',   text: 'Completar onboarding de Gonzalo al canal Magento',                       description: 'Arranque ~Mar 23. Negocio Magento, procesos PM, accesos y contexto Q2.', deadline: '2026-04-15', status: 'en-curso',   progress: 25, notes: '' },
-  { id: 'g12', category: 'Equipo',   text: 'Establecer cadencia semanal de sync con Carlo',                          description: 'Reuniones documentadas en Tab Semanal. Agendas preparadas con antelación.', deadline: '2026-04-30', status: 'en-curso',   progress: 40, notes: '' },
-  { id: 'g13', category: 'Equipo',   text: 'Reducir bloqueos por dependencias técnicas no identificadas a tiempo',   description: 'Implementar revisión de deps en refinamiento. Meta: 0 bloqueos sorpresa en Q2.', deadline: '2026-06-30', status: 'pendiente',  progress: 0,  notes: '' },
-  // Personal
-  { id: 'g14', category: 'Personal', text: 'Dominar el proceso de estimación con T-Shirt sizing en Jira',            description: 'Conseguir que el equipo estime de forma consistente y el velocity sea predecible.', deadline: '2026-04-30', status: 'en-curso',   progress: 50, notes: '' },
-  { id: 'g15', category: 'Personal', text: 'Construir un dashboard de métricas de negocio del canal e-commerce',     description: 'Revenue tab como punto de partida. Incluir conversión, churn y LTV básico.', deadline: '2026-05-31', status: 'pendiente',  progress: 0,  notes: '' },
-];
+const INITIAL_GOALS = [];
 
 // ─── Suggested Goals (panel de sugerencias Q2) ────────────────────────────────
 const SUGGESTED_GOALS = [
-  // Producto
-  { category: 'Producto', text: 'Lanzar Renovación Automática PayPal a producción',           description: 'Extensión del sistema de pagos automáticos. Requiere tokenización previa y acuerdo con proveedor PayPal.' },
-  { category: 'Producto', text: 'Completar carga masiva de catálogo (100% productos activos)', description: 'Todos los tests psicométricos activos con atributos completos, descripciones y precios en nuevo template.' },
-  { category: 'Producto', text: 'Definir MVP de Login con Redes Sociales',                    description: 'Reducir fricción de registro. Analizar volumen de abandonos en registro actual y definir alcance mínimo.' },
-  { category: 'Producto', text: 'Cerrar deuda técnica de migración TDZ (cupones)',             description: 'Validación completa con Federica. Garantizar que la lógica de cupones funciona en el nuevo template.' },
-  { category: 'Producto', text: 'Lanzar Analítica Vertex en producción',                      description: 'Verificación funcional con Carlos. Datos de comportamiento de usuario disponibles para toma de decisiones.' },
-  { category: 'Producto', text: 'Documentar arquitectura técnica del canal (ADRs)',            description: 'Architecture Decision Records para las decisiones clave del Q2: tokenización, renovación automática, SSO.' },
-  // Negocio
-  { category: 'Negocio',  text: 'Establecer baseline de métricas del canal',                  description: 'Medir conversión actual, tasa de churn, LTV medio y ticket medio antes de lanzar cambios del Q2.' },
-  { category: 'Negocio',  text: 'Reducir tasa de abandono en checkout -5%',                   description: 'Identificar los 3 principales puntos de abandono con Vertex Analytics y crear backlog de mejoras.' },
-  { category: 'Negocio',  text: 'Incrementar GMV canal España +10% vs Q1 2026',               description: 'Combinación de mejor conversión, catálogo más completo y renovación automática activa.' },
-  { category: 'Negocio',  text: 'Onboarding digital de 50 nuevos profesionales en Q2',        description: 'Medir alta de nuevos clientes desde nuevo template. KPI clave para validar UX de registro.' },
-  { category: 'Negocio',  text: 'Reducir soporte manual de renovaciones a 0 incidencias',     description: 'Con Renovación Automática operativa, el equipo de soporte no debería gestionar renovaciones manualmente.' },
-  // Equipo
-  { category: 'Equipo',   text: 'Implementar refinamiento de épicas antes de cada sprint',    description: 'Sesión de 1h con el equipo antes de cada sprint para revisar criterios de aceptación y dependencias.' },
-  { category: 'Equipo',   text: 'Crear plantillas estándar de spec/PRD para el equipo',       description: 'Basadas en el estilo Lenny Rachitsky. Usadas por todo el equipo para nuevas features del Q3.' },
-  { category: 'Equipo',   text: 'Lograr que el 100% de stories tengan criterios de aceptación antes de desarrollo', description: 'Reducir retrabajo. Medido en el porcentaje de tickets que entran a sprint sin AC.' },
-  { category: 'Equipo',   text: 'Establecer proceso de retrospectiva mensual con el equipo',  description: 'Al menos 1 retro por mes. Formato Keep/Stop/Start. Acciones documentadas y con owner.' },
-  { category: 'Equipo',   text: 'Documentar proceso de UAT y checklist de release',           description: 'Checklist reproducible para cada deploy a producción. Reducir incidencias post-lanzamiento.' },
-  // Personal
-  { category: 'Personal', text: 'Publicar 2 posts de LinkedIn sobre PM en ecommerce/psicometría', description: 'Reflexiones reales sobre el trabajo: gestión de producto con equipos pequeños, Magento como plataforma.' },
-  { category: 'Personal', text: 'Leer Continuous Discovery Habits (Teresa Torres)',           description: 'Aplicar el framework de oportunidades a la discovery del canal. Notas y aplicación práctica.' },
-  { category: 'Personal', text: 'Construir un tracker personal de logros (XYZ)',              description: 'Registrar logros con la fórmula de Google: Logré X medido por Y haciendo Z. Para LinkedIn y revisiones.' },
-  { category: 'Personal', text: 'Establecer rutina semanal de revisión de métricas del canal', description: 'Cada lunes: revisar 5 métricas clave del canal. 15 minutos. Detectar anomalías antes de la reunión con Carlo.' },
-  { category: 'Personal', text: 'Obtener validación de stakeholders en PRDs antes de desarrollo', description: 'Meta: 0 PRDs que entren a sprint sin aprobación explícita de Carlo o stakeholder relevante.' },
+  { category: 'Producto', text: 'Lanzar feature principal del quarter en producción',           description: 'La epic más importante del quarter, validada con usuarios reales.' },
+  { category: 'Producto', text: 'Cerrar todas las épicas "confirmed" del PI Planning',          description: 'El 100% de las épicas confirmadas entregadas antes del fin del quarter.' },
+  { category: 'Producto', text: 'Completar integración con sistema externo clave',              description: 'Conectar con ERP, CRM o API de terceros más relevante para el negocio.' },
+  { category: 'Producto', text: 'Reducir deuda técnica en un 20%',                              description: 'Identificar los 3 mayores focos de deuda técnica y cerrar al menos uno.' },
+  { category: 'Producto', text: 'Definir y cerrar PRD de la siguiente feature prioritaria',     description: 'PRD aprobado por stakeholders antes de que entre a desarrollo.' },
+  { category: 'Negocio',  text: 'Incrementar métrica clave de negocio en +10%',                 description: 'Conversión, retención, activación — la métrica más importante de tu canal.' },
+  { category: 'Negocio',  text: 'Reducir tiempo de ciclo de entrega a menos de 2 semanas',      description: 'Desde ticket creado hasta feature en producción.' },
+  { category: 'Negocio',  text: 'Establecer baseline de métricas del canal',                    description: 'Medir conversión, churn y ticket medio antes de lanzar cambios.' },
+  { category: 'Negocio',  text: 'Reducir tasa de abandono en el flujo crítico -5%',             description: 'Identificar los 3 principales puntos de abandono y crear backlog de mejoras.' },
+  { category: 'Equipo',   text: 'Implementar refinamiento de épicas antes de cada sprint',      description: 'Sesión de 1h con el equipo. Criterios de aceptación definidos antes de arrancar.' },
+  { category: 'Equipo',   text: 'Lograr que el 100% de stories tengan criterios de aceptación', description: 'Reducir retrabajo. Medido en tickets que entran a sprint sin AC.' },
+  { category: 'Equipo',   text: 'Completar onboarding de nuevo miembro al equipo',              description: 'Accesos, contexto del producto, primer sprint autónomo.' },
+  { category: 'Equipo',   text: 'Establecer proceso de retrospectiva mensual',                   description: 'Al menos 1 retro al mes. Formato Keep/Stop/Start. Acciones con owner.' },
+  { category: 'Personal', text: 'Publicar 2 posts de reflexión sobre product management',       description: 'Compartir aprendizajes reales del quarter. LinkedIn, blog o notas internas.' },
+  { category: 'Personal', text: 'Establecer rutina semanal de revisión de métricas',            description: 'Cada lunes: 15 minutos revisando 5 métricas clave. Detectar anomalías.' },
+  { category: 'Personal', text: 'Obtener validación de stakeholders en PRDs antes de desarrollo', description: 'Meta: 0 PRDs que entren a sprint sin aprobación explícita.' },
+  { category: 'Personal', text: 'Leer un libro de producto o liderazgo este quarter',           description: 'Continuous Discovery Habits, Shape Up, The Lean Startup, o similar.' },
 ];
 
 // ─── Initial Logros (achievements tracker) ───────────────────────────────────
@@ -399,60 +323,25 @@ const INITIAL_LOGROS = [];
 // ─── Suggested Logros (fórmula XYZ de Google) ────────────────────────────────
 const SUGGESTED_LOGROS = [
   {
-    title: 'Lanzamiento Renovación Automática CC',
-    x: 'diseñar y lanzar el sistema de renovación automática de suscripciones con tarjeta de crédito en Magento',
-    y: 'eliminación del 100% de las renovaciones manuales y aumento estimado del 15% en tasa de retención',
-    z: 'redactar el PRD v3.1, coordinar 4 sprints con el equipo de desarrollo y validar la integración con Nexi',
-    tags: 'Product Launch, Payments, Retention, Q2 2026',
+    title: 'Lanzamiento de feature clave',
+    x: 'diseñar y lanzar [nombre de feature] en producción',
+    y: 'impacto medible en [métrica] — e.g. +15% retención o -20% tiempo de ciclo',
+    z: 'redactar el PRD, coordinar N sprints con el equipo y gestionar la validación con stakeholders',
+    tags: 'Product Launch, Q[X] [año]',
   },
   {
-    title: 'Migración Template Mobile',
-    x: 'migrar el canal e-commerce de Giunti a un nuevo template responsive y mobile-first',
-    y: 'mejora en la tasa de conversión mobile y reducción del tiempo de carga de páginas de producto',
-    z: 'gestionar a René como contratista externo durante Sprint 0, coordinar UAT con Federica y supervisar el deploy a producción',
-    tags: 'Mobile, UX, Q1-Q2 2026',
+    title: 'Mejora de proceso del equipo',
+    x: 'implementar [proceso — refinamiento, retros, métricas] en el equipo',
+    y: 'reducción de bloqueos o retrabajo — cuantificar si es posible',
+    z: 'diseñar el proceso, facilitar las primeras sesiones y conseguir adopción del equipo',
+    tags: 'Process, Team, Leadership',
   },
   {
-    title: 'PI Planning Q2 2026 — Alineación de equipo',
-    x: 'cerrar el PI Planning Q2 con 14 épicas priorizadas, capacidad estimada y equipo alineado',
-    y: 'carga de capacidad al 59%, confianza global del 67% y 0 dependencias críticas sin identificar',
-    z: 'construir la herramienta interactiva de PI Planning, facilitar sesiones con Carlo y coordinar estimaciones con el equipo',
-    tags: 'Planning, Leadership, Q2 2026',
-  },
-  {
-    title: 'Estandarización de flujos Jira (Galileo)',
-    x: 'documentar y estandarizar los flujos Jira del equipo de Giunti IT',
-    y: '100% de tipos de ticket con workflow documentado y referencia accesible para el equipo',
-    z: 'diseñar diagramas de flujo, crear la guía interactiva galileo-workflow.html y coordinar la adopción con el equipo',
-    tags: 'Process, Team, Jira, Q2 2026',
-  },
-  {
-    title: 'Onboarding de nuevo miembro — Gonzalo',
-    x: 'incorporar con éxito a Gonzalo al canal Magento y al equipo de Giunti IT',
-    y: 'onboarding completado en 3 semanas con accesos, contexto de Q2 y primera épica asignada',
-    z: 'crear el plan de onboarding, coordinar sesiones técnicas con el equipo y asignar tareas progresivas de menor a mayor complejidad',
-    tags: 'Team, Onboarding, Q2 2026',
-  },
-  {
-    title: 'Lanzamiento Analítica Vertex a producción',
-    x: 'poner en producción la analítica Vertex para el canal e-commerce de Giunti',
-    y: 'datos de comportamiento de usuario disponibles para decisiones de producto desde la semana del lanzamiento',
-    z: 'coordinar la verificación funcional con Carlos, resolver incidencias de recarga de datos y gestionar el deploy a producción',
-    tags: 'Analytics, Data, Q2 2026',
-  },
-  {
-    title: 'Carga masiva del catálogo de tests psicométricos',
-    x: 'completar la carga masiva del catálogo de tests psicométricos en el nuevo template de Magento',
-    y: '100% de los productos activos con atributos completos, imágenes y precios correctos en producción',
-    z: 'definir el formato de atributos, automatizar la transformación de Excel con IA y coordinar la carga piloto y masiva con el equipo',
-    tags: 'Catalog, Magento, Q2 2026',
-  },
-  {
-    title: 'Cierre de migración Interfaz Dante + SSO',
-    x: 'completar la migración de la interfaz de productos Dante con SSO integrado',
-    y: '100% de los productos Dante accesibles vía SSO sin incidencias y validados con el equipo de Dante',
-    z: 'coordinar sesiones de prueba con Federica, gestionar la tabla de intersección de productos y resolver bloqueos técnicos con Guillermo',
-    tags: 'SSO, Migration, Integration, Q2 2026',
+    title: 'Integración técnica completada',
+    x: 'integrar [sistema A] con [sistema B] para automatizar [flujo]',
+    y: 'eliminación de trabajo manual — e.g. N horas/semana ahorradas',
+    z: 'definir el spec técnico, coordinar el desarrollo y validar el go-live',
+    tags: 'Integration, Engineering, Q[X] [año]',
   },
 ];
 
@@ -512,9 +401,12 @@ function memberSizeWeight(member, cfg, sprintId) {
   return w;
 }
 // devCap = average S-capacity across all Q2 sprints × capMult
-// Correctly reflects custom sizes that only apply to a subset of sprints
+// Absent/partial sprints contribute reduced capacity; denominator stays full (honest average)
 function devCap(member, cfg) {
-  const totalS = SPRINTS.reduce((sum, sp) => sum + memberSizesForSprint(member, cfg, sp.id).S, 0);
+  const totalS = SPRINTS.reduce((sum, sp) => {
+    const factor = getMemberSprintFactor(member, sp.id);
+    return sum + memberSizesForSprint(member, cfg, sp.id).S * factor;
+  }, 0);
   return (totalS / SPRINTS.length) * member.capMult;
 }
 
@@ -552,25 +444,42 @@ function weightedConfidence(epics, cfg) {
   return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 }
 
+// Returns a frozen team for a closed sprint (uses snapshot), or the current team
+function effectiveTeamForSprint(sprintId, team, closedSprints) {
+  const snap = closedSprints?.[sprintId];
+  if (!snap) return team;
+  return team.map(m => {
+    const ms = snap.teamSnapshot.find(s => s.id === m.id);
+    return ms ? { ...m, capMult: ms.capMult, absences: ms.absences, customSizes: ms.customSizes } : m;
+  });
+}
+
 // Per-member story breakdown for a given sprint
-function memberSprintDetail(sprintId, epics, team, cfg) {
-  return team.map(member => {
+function memberSprintDetail(sprintId, epics, team, cfg, closedSprints) {
+  const effectiveTeam = effectiveTeamForSprint(sprintId, team, closedSprints);
+  return effectiveTeam.map(member => {
     const w = memberSizeWeight(member, cfg, sprintId); // per-member, per-sprint weights
     const counts = { S: 0, M: 0, L: 0, XL: 0 };
     let pts = 0;
     const stories = [];
     epics.filter(e => e.status !== 'deferred').forEach(epic => {
+      const epicColor = epic.color || '#64748b';
+      const rawAbbrev = epic.label.replace(/[aeiouáéíóúüÁÉÍÓÚÜ\s,.\-]/g, '');
+      const epicShortLabel = (rawAbbrev.substring(0, 4) || epic.label.substring(0, 4)).toUpperCase();
       epic.stories.filter(s => s.sprint === sprintId && s.owner === member.id).forEach(s => {
         if (s.size) { counts[s.size]++; pts += w[s.size] || 0; }
-        stories.push({ title: s.title, size: s.size, done: s.done, epicLabel: epic.label });
+        stories.push({ title: s.title, size: s.size, done: s.done, epicLabel: epic.label, epicColor, epicShortLabel });
       });
     });
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     // Use sprint-specific capacity (not Q2 average) for per-sprint utilization %
-    const sprintS = memberSizesForSprint(member, cfg, sprintId).S;
+    const factor = getMemberSprintFactor(member, sprintId);
+    const isAbsent = factor === 0;
+    const absenceDays = factor < 1 ? Math.round((1 - factor) * 10) : 0; // days absent (0 = present)
+    const sprintS = memberSizesForSprint(member, cfg, sprintId).S * factor;
     const memberCap = sprintS * member.capMult * (1 - cfg.bufferPct / 100);
-    const pct = memberCap > 0 ? Math.round((pts / memberCap) * 100) : 0;
-    return { member, counts, pts: Math.round(pts * 10) / 10, total, memberCap: Math.round(memberCap * 10) / 10, pct, stories };
+    const pct = memberCap > 0 ? Math.round((pts / memberCap) * 100) : (pts > 0 ? 999 : 0);
+    return { member, counts, pts: Math.round(pts * 10) / 10, total, memberCap: Math.round(memberCap * 10) / 10, pct, stories, isAbsent, absenceDays };
   });
 }
 
@@ -582,23 +491,33 @@ function sprintRecommendation(pct) {
   return { text: '🔵 Sprint ligero — considera añadir más trabajo', color: '#3b82f6' };
 }
 
-// Per-sprint load and confidence
-function sprintBreakdown(epics, team, cfg) {
+// Per-sprint load and confidence — uses closedSprints snapshot when available
+function sprintBreakdown(epics, team, cfg, closedSprints) {
   const w = sizeWeight(cfg);
-  const { effective } = teamCap(team, cfg);
   return SPRINTS.map(sprint => {
+    // Use frozen team for closed sprints; live team otherwise
+    const effectiveTeam = effectiveTeamForSprint(sprint.id, team, closedSprints);
+    // Per-sprint capacity (more accurate than Q2 average)
+    let rawCap = 0;
+    effectiveTeam.forEach(m => {
+      const factor = getMemberSprintFactor(m, sprint.id);
+      const sizes = memberSizesForSprint(m, cfg, sprint.id);
+      rawCap += sizes.S * m.capMult * factor;
+    });
+    const capacity = Math.floor(rawCap * (1 - cfg.bufferPct / 100));
+
     let load = 0;
     let weightedConf = 0;
     let totalWeight = 0;
     const epicSet = new Set();
+    let storyCount = 0;
     epics.filter(e => e.status !== 'deferred').forEach(epic => {
       epic.stories.forEach(s => {
         if (s.sprint === sprint.id && s.size) {
           const sw = w[s.size] || 0;
           load += sw;
-          if (!epicSet.has(epic.id)) {
-            epicSet.add(epic.id);
-          }
+          storyCount++;
+          if (!epicSet.has(epic.id)) epicSet.add(epic.id);
         }
       });
     });
@@ -614,8 +533,8 @@ function sprintBreakdown(epics, team, cfg) {
       }
     });
     const conf = totalWeight > 0 ? Math.round(weightedConf / totalWeight) : 0;
-    const pct = effective > 0 ? Math.round((load / effective) * 100) : 0;
-    return { sprint, load: Math.round(load * 10) / 10, capacity: effective, pct, confidence: conf, epicCount: epicSet.size };
+    const pct = capacity > 0 ? Math.round((load / capacity) * 100) : 0;
+    return { sprint, load: Math.round(load * 10) / 10, capacity, pct, confidence: conf, epicCount: epicSet.size, storyCount };
   });
 }
 
@@ -864,9 +783,10 @@ function Sidebar({ agenda, setAgenda, open, onToggle }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // KANBAN
 // ═══════════════════════════════════════════════════════════════════════════════
-function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpHandled }) {
+function KanbanTab({ epics, setEpics, team, stakeholders, theme, config, jumpToEpicId, onJumpHandled }) {
   const t = useTheme();
   const SC = getSC(theme, config.columnNames);
+  const allPeople = [...team, ...(stakeholders || [])];
   const [expId, setExpId] = useState(null);
   const [dragId, setDragId] = useState(null);
 
@@ -1104,7 +1024,7 @@ function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpH
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 10, color: t.textMuted }}>
-                          {epic.owners.length > 0 && <span>👤 {epic.owners.map(o => team.find(m => m.id === o)?.name).join(', ')}</span>}
+                          {epic.owners.length > 0 && <span>👤 {epic.owners.map(o => allPeople.find(m => m.id === o)?.name).join(', ')}</span>}
                           {sprint && <span>📅 {sprint.label}</span>}
                           {epic.stories.length > 0 && !epic.stories.every(s => s.done) && <span>📌 {epic.stories.filter(s => s.done).length}/{epic.stories.length} HU</span>}
                           {epic.stories.length > 0 && epic.stories.every(s => s.done) && (
@@ -1115,6 +1035,19 @@ function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpH
                       </div>
                       {exp && (
                         <div onClick={e => e.stopPropagation()} style={{ borderTop: `1px solid ${sc.border}`, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'end' }}>
+                            <div>
+                              <Label>Nombre de la épica</Label>
+                              <input value={epic.label} onChange={e => ue(epic.id, { label: e.target.value })}
+                                style={{ width: '100%', background: t.bgDeep, border: `1px solid ${t.accent}`, borderRadius: 4, color: t.text, fontSize: 12, fontWeight: 700, padding: '5px 8px', outline: 'none' }} />
+                            </div>
+                            <div>
+                              <Label>Subtítulo</Label>
+                              <input value={epic.sublabel || ''} onChange={e => ue(epic.id, { sublabel: e.target.value })}
+                                placeholder="Ej: Fase 1 / MVP..."
+                                style={{ width: '100%', background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 4, color: t.text, fontSize: 11, padding: '5px 8px', outline: 'none' }} />
+                            </div>
+                          </div>
                           <div>
                             <Label>Objetivo</Label>
                             <textarea value={epic.objective} onChange={e => ue(epic.id, { objective: e.target.value })}
@@ -1130,7 +1063,7 @@ function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpH
                               <select value={epic.owners[0] || ''} onChange={e => ue(epic.id, { owners: e.target.value ? [e.target.value] : [] })}
                                 style={{ width: '100%', background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 4, color: t.text, fontSize: 10, padding: '3px 5px' }}>
                                 <option value="">—</option>
-                                {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                {allPeople.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                               </select>
                             </div>
                             <div>
@@ -1169,7 +1102,7 @@ function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpH
                                 <select value={s.owner} onChange={e => updSt(epic.id, s.id, { owner: e.target.value })}
                                   style={{ width: 60, background: 'transparent', border: 'none', color: t.textFaint, fontSize: 9 }}>
                                   <option value="">—</option>
-                                  {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                  {allPeople.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                                 <select value={s.sprint || ''} onChange={e => updSt(epic.id, s.id, { sprint: e.target.value || null })}
                                   style={{ width: 38, background: 'transparent', border: 'none', color: t.textFaint, fontSize: 9 }}>
@@ -1199,7 +1132,7 @@ function KanbanTab({ epics, setEpics, team, theme, config, jumpToEpicId, onJumpH
                             </label>
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                               <span style={{ fontSize: 10, color: t.textMuted }}>Color en Timeline:</span>
-                              <input type="color" value={epic.color || team.find(m => m.id === epic.owners[0])?.color || '#64748b'}
+                              <input type="color" value={epic.color || allPeople.find(m => m.id === epic.owners[0])?.color || '#64748b'}
                                 onChange={e => ue(epic.id, { color: e.target.value })}
                                 style={{ width: 22, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0 }} />
                             </div>
@@ -1243,7 +1176,7 @@ function mBtn(bg, color) { return { fontSize: 9, padding: '2px 8px', background:
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPACITY TAB
 // ═══════════════════════════════════════════════════════════════════════════════
-function CapacidadTab({ epics, team, config }) {
+function CapacidadTab({ epics, team, config, sprintVelocity, setSprintVelocity, closedSprints, setClosedSprints }) {
   const t = useTheme();
   const w = sizeWeight(config);
   const { perSprint, effective, total: cap } = teamCap(team, config);
@@ -1262,7 +1195,7 @@ function CapacidadTab({ epics, team, config }) {
   SIZES.forEach(s => { storyCounts[s] = 0; });
   active.forEach(e => e.stories.forEach(s => { if (s.size) storyCounts[s.size]++; }));
 
-  const breakdown = sprintBreakdown(epics, team, config);
+  const breakdown = sprintBreakdown(epics, team, config, closedSprints);
 
   return (
     <div>
@@ -1322,19 +1255,41 @@ function CapacidadTab({ epics, team, config }) {
               const lc = sb.pct > 100 ? '#ef4444' : sb.pct > 85 ? '#f59e0b' : '#2563eb';
               const isSelected = selectedSprint === sb.sprint.id;
               const isCurrent = !!sb.sprint.current;
+              const isClosed = !!closedSprints?.[sb.sprint.id];
+              const closedAt = isClosed ? closedSprints[sb.sprint.id].closedAt : null;
+              const toggleClose = (e) => {
+                e.stopPropagation();
+                if (!setClosedSprints) return;
+                if (isClosed) {
+                  setClosedSprints(p => { const n = {...p}; delete n[sb.sprint.id]; return n; });
+                } else {
+                  setClosedSprints(p => ({ ...p, [sb.sprint.id]: {
+                    closedAt: new Date().toISOString(),
+                    teamSnapshot: team.map(m => ({ id: m.id, capMult: m.capMult, absences: [...(m.absences || [])], customSizes: m.customSizes ? {...m.customSizes} : null }))
+                  }}));
+                }
+              };
               return (
                 <div key={sb.sprint.id}
                   onClick={() => setSelectedSprint(p => p === sb.sprint.id ? null : sb.sprint.id)}
-                  style={{ background: isSelected ? (t.bg === '#f1f5f9' ? '#e8f0fe' : '#0d1e3a') : t.bg, borderRadius: 8, padding: '14px 12px', border: `1.5px solid ${isCurrent ? '#f59e0b' : isSelected ? t.accent : t.border}`, cursor: 'pointer', transition: 'border 0.15s, background 0.15s', position: 'relative' }}>
-                  {isCurrent && <div style={{ position: 'absolute', top: -1, right: 8, fontSize: 8, fontWeight: 800, background: '#f59e0b', color: '#000', padding: '1px 6px', borderRadius: '0 0 4px 4px', letterSpacing: 0.5, textTransform: 'uppercase' }}>Actual</div>}
+                  style={{ background: isSelected ? (t.bg === '#f1f5f9' ? '#e8f0fe' : '#0d1e3a') : t.bg, borderRadius: 8, padding: '14px 12px', border: `1.5px solid ${isClosed ? '#f59e0b66' : isCurrent ? '#f59e0b' : isSelected ? t.accent : t.border}`, cursor: 'pointer', transition: 'border 0.15s, background 0.15s', position: 'relative' }}>
+                  {isCurrent && !isClosed && <div style={{ position: 'absolute', top: -1, right: 8, fontSize: 8, fontWeight: 800, background: '#f59e0b', color: '#000', padding: '1px 6px', borderRadius: '0 0 4px 4px', letterSpacing: 0.5, textTransform: 'uppercase' }}>Actual</div>}
+                  {isClosed && <div style={{ position: 'absolute', top: -1, left: 8, fontSize: 8, fontWeight: 800, background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b66', padding: '1px 6px', borderRadius: '0 0 4px 4px', letterSpacing: 0.5, textTransform: 'uppercase' }} title={`Cerrado el ${new Date(closedAt).toLocaleDateString('es')}`}>🔒 Cerrado</div>}
                   {/* Sprint header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, marginTop: isClosed ? 10 : 0 }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: isCurrent ? '#f59e0b' : t.heading }}>{sb.sprint.full}</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: isCurrent && !isClosed ? '#f59e0b' : t.heading }}>{sb.sprint.full}</div>
                       <div style={{ fontSize: 9, color: t.textFaint, marginTop: 1 }}>{sb.sprint.dates}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <span style={{ fontSize: 9, fontWeight: 700, color: t.textDim, background: t.bgAlt, padding: '2px 6px', borderRadius: 4 }}>{sb.epicCount} ép.</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: t.textDim, background: t.bgAlt, padding: '2px 6px', borderRadius: 4 }}>{sb.storyCount} HUs</span>
+                      {setClosedSprints && (
+                        <button onClick={toggleClose} title={isClosed ? `Reabrir sprint (descongelar capacidad)\nCerrado el ${new Date(closedAt).toLocaleDateString('es')}` : 'Cerrar sprint (congela capacidad y HUs)'}
+                          style={{ background: 'none', border: `1px solid ${isClosed ? '#f59e0b66' : t.border}`, borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 11, color: isClosed ? '#f59e0b' : t.textFaint, lineHeight: 1 }}>
+                          {isClosed ? '🔒' : '🔓'}
+                        </button>
+                      )}
                       <span style={{ fontSize: 9, color: isSelected ? t.accent : t.textFaint }}>{ isSelected ? '▲' : '▼' }</span>
                     </div>
                   </div>
@@ -1365,6 +1320,29 @@ function CapacidadTab({ epics, team, config }) {
                       <div style={{ fontSize: 18, fontWeight: 700, color: t.textDim }}>—</div>
                     )}
                   </div>
+
+                  {/* Velocidad real — solo en sprints pasados */}
+                  {isPastSprint(sb.sprint.id) && setSprintVelocity && (
+                    <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 8, marginTop: 4 }}>
+                      <div style={{ fontSize: 9, color: t.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Velocidad real</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="number" min="0" step="0.5"
+                          value={sprintVelocity?.[sb.sprint.id] ?? ''}
+                          onChange={e => setSprintVelocity(p => ({ ...p, [sb.sprint.id]: parseFloat(e.target.value) || 0 }))}
+                          placeholder="pts"
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 54, fontSize: 13, fontWeight: 700, textAlign: 'center', color: t.text, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 4, padding: '3px 4px' }} />
+                        <span style={{ fontSize: 9, color: t.textFaint }}>/ {sb.load} plan.</span>
+                      </div>
+                      {sprintVelocity?.[sb.sprint.id] !== undefined && sprintVelocity?.[sb.sprint.id] !== '' && (() => {
+                        const actual = sprintVelocity[sb.sprint.id];
+                        const diff = Math.round((actual - sb.load) * 10) / 10;
+                        const driftPct = sb.load > 0 ? Math.round((actual / sb.load) * 100) : 0;
+                        const dc = diff >= 0 ? '#22c55e' : diff > -sb.load * 0.2 ? '#f59e0b' : '#ef4444';
+                        return <div style={{ fontSize: 10, color: dc, fontWeight: 700, marginTop: 3 }}>{diff >= 0 ? '+' : ''}{diff} pts ({driftPct}%)</div>;
+                      })()}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1374,7 +1352,7 @@ function CapacidadTab({ epics, team, config }) {
           {selectedSprint && (() => {
             const sb = breakdown.find(b => b.sprint.id === selectedSprint);
             if (!sb) return null;
-            const members = memberSprintDetail(selectedSprint, epics, team, config);
+            const members = memberSprintDetail(selectedSprint, epics, team, config, closedSprints);
             const rec = sprintRecommendation(sb.pct);
             return (
               <div style={{ marginTop: 14, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 8, padding: 16 }}>
@@ -1386,15 +1364,20 @@ function CapacidadTab({ epics, team, config }) {
                   <span style={{ fontSize: 11, fontWeight: 600, color: rec.color }}>{rec.text}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(team.length, 5)}, 1fr)`, gap: 10 }}>
-                  {members.map(({ member, counts, pts, total, memberCap, pct: mPct, stories }) => {
-                    const mc = mPct > 105 ? '#ef4444' : mPct > 85 ? '#f59e0b' : mPct > 10 ? '#22c55e' : '#64748b';
+                  {members.map(({ member, counts, pts, total, memberCap, pct: mPct, stories, isAbsent, absenceDays }) => {
+                    const isPartial = !isAbsent && absenceDays > 0;
+                    const mc = isAbsent ? '#ef4444' : mPct > 105 ? '#ef4444' : mPct > 85 ? '#f59e0b' : mPct > 10 ? '#22c55e' : '#64748b';
                     return (
-                      <div key={member.id} style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 7, padding: 10 }}>
+                      <div key={member.id} style={{ background: t.bgAlt, border: `1px solid ${isAbsent ? '#ef444433' : isPartial ? '#f59e0b33' : t.border}`, borderRadius: 7, padding: 10, opacity: isAbsent ? 0.65 : 1 }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
                           <div style={{ width: 22, height: 22, borderRadius: '50%', background: member.color + '22', border: `2px solid ${member.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: member.color, flexShrink: 0 }}>{member.name.charAt(0)}</div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: t.heading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.name}</div>
-                            <div style={{ fontSize: 9, color: t.textFaint }}>{pts} / {memberCap} pts · <span style={{ color: mc, fontWeight: 700 }}>{mPct}%</span></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: t.heading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.name}</div>
+                              {isAbsent && <span style={{ fontSize: 8, fontWeight: 800, background: '#ef444422', border: '1px solid #ef444466', color: '#ef4444', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0 }}>🏖 Ausente</span>}
+                              {isPartial && <span style={{ fontSize: 8, fontWeight: 800, background: '#f59e0b22', border: '1px solid #f59e0b66', color: '#f59e0b', padding: '1px 5px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0 }}>−{absenceDays}d</span>}
+                            </div>
+                            <div style={{ fontSize: 9, color: t.textFaint }}>{isAbsent ? '0 pts (ausente)' : `${pts} / ${memberCap} pts · `}{!isAbsent && <span style={{ color: mc, fontWeight: 700 }}>{mPct}%</span>}{!isAbsent && total > 0 && <span style={{ color: t.textDim }}> · {total} HU{total !== 1 ? 's' : ''}</span>}</div>
                           </div>
                         </div>
                         {/* Size counts */}
@@ -1409,10 +1392,13 @@ function CapacidadTab({ epics, team, config }) {
                         </div>
                         {/* Story list */}
                         {stories.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 110, overflowY: 'auto' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 130, overflowY: 'auto' }}>
                             {stories.map((s, si) => (
-                              <div key={si} style={{ fontSize: 9, color: s.done ? t.textDim : t.textMuted, display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                              <div key={si} style={{ fontSize: 9, color: s.done ? t.textDim : t.textMuted, display: 'flex', gap: 3, alignItems: 'center' }}>
                                 <span style={{ color: SIZE_COLORS[s.size] || '#64748b', fontWeight: 700, flexShrink: 0 }}>[{s.size}]</span>
+                                {s.epicShortLabel && (
+                                  <span title={s.epicLabel} style={{ background: (s.epicColor || '#64748b') + '33', border: `1px solid ${s.epicColor || '#64748b'}66`, color: s.epicColor || '#64748b', fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, flexShrink: 0, lineHeight: '14px', letterSpacing: 0.3 }}>{s.epicShortLabel}</span>
+                                )}
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: s.done ? 'line-through' : 'none' }} title={`${s.epicLabel}: ${s.title}`}>{s.title}</span>
                               </div>
                             ))}
@@ -1425,7 +1411,48 @@ function CapacidadTab({ epics, team, config }) {
               </div>
             );
           })()}
-        </div>
+      </div>
+
+      {/* ── Carry-over: HUs sin cerrar en sprints pasados ─── */}
+      {(() => {
+        const co = getCarryOverStories(epics);
+        if (co.length === 0) return null;
+        const bySprint = {};
+        co.forEach(({ story, epic }) => {
+          const sp = story.sprint;
+          if (!bySprint[sp]) bySprint[sp] = [];
+          bySprint[sp].push({ story, epic });
+        });
+        return (
+          <div style={{ background: '#ef444408', border: '1.5px solid #ef444433', borderRadius: 8, padding: 14, marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 14 }}>⚠</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#ef4444' }}>Carry-over detectado</span>
+              <span style={{ fontSize: 11, color: '#ef4444', background: '#ef444422', border: '1px solid #ef444444', borderRadius: 10, padding: '1px 8px', fontWeight: 700 }}>{co.length} HU{co.length !== 1 ? 's' : ''}</span>
+              <span style={{ fontSize: 11, color: t.textMuted, marginLeft: 4 }}>Historias no cerradas en sprints ya terminados. Deben reasignarse o marcarse como DONE.</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(bySprint).map(([spId, items]) => {
+                const sp = SPRINTS.find(s => s.id === spId);
+                return (
+                  <div key={spId}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sp?.full || spId} · {sp?.dates}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {items.map(({ story, epic }) => (
+                        <div key={story.id} style={{ display: 'flex', gap: 6, alignItems: 'center', background: t.bgAlt, border: `1px solid #ef444422`, borderRadius: 4, padding: '4px 8px', fontSize: 11 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: SIZE_COLORS[story.size] || '#64748b', background: (SIZE_COLORS[story.size] || '#64748b') + '22', padding: '1px 5px', borderRadius: 3 }}>{story.size || '?'}</span>
+                          <span style={{ color: t.textMuted, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={story.title}>{story.title}</span>
+                          <span style={{ fontSize: 10, color: t.textFaint, flexShrink: 0 }}>→ {epic.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1433,11 +1460,15 @@ function CapacidadTab({ epics, team, config }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TIMELINE TAB — GANTT WITH DRAG
 // ═══════════════════════════════════════════════════════════════════════════════
-function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
+function TimelineTab({ epics, setEpics, team, stakeholders, config, onNavigateToEpic, closedSprints }) {
   const t = useTheme();
+  const allPeople = [...team, ...(stakeholders || [])];
   const [expEpics, setExpEpics] = useState({});
+  const [showOwnerInitials, setShowOwnerInitials] = useState(true);
   const [drag, setDrag] = useState(null);
   const [padL, setPadL] = useState(220);
+  const [filterOwners, setFilterOwners] = useState([]);
+  const [filterSprint, setFilterSprint] = useState(null);
   const colW = 160;
 
   const startResizeCol = useCallback((e) => {
@@ -1459,7 +1490,24 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
   const epicH = config.epicRowH || 40;
   const storyH = Math.round(epicH * 0.6);
 
-  const vis = epics.filter(e => e.ss && e.status !== 'deferred');
+  // Dynamic owner list: only people who have at least one HU assigned (any sprint)
+  const assignedOwnerIds = useMemo(() => {
+    const ids = new Set();
+    epics.forEach(e => {
+      if (e.status !== 'deferred') e.stories.forEach(s => { if (s.owner) ids.add(s.owner); });
+    });
+    return [...ids];
+  }, [epics]);
+
+  const allScheduled = epics.filter(e => e.ss && e.status !== 'deferred');
+  // Apply owner filter: keep epics that have ≥1 story owned by any selected owner
+  const ownerFiltered = filterOwners.length > 0
+    ? allScheduled.filter(e => e.stories.some(s => filterOwners.includes(s.owner)))
+    : allScheduled;
+  // Apply sprint filter: keep epics that have ≥1 story assigned to the selected sprint
+  const vis = filterSprint
+    ? ownerFiltered.filter(e => e.stories.some(s => s.sprint === filterSprint))
+    : ownerFiltered;
   const unscheduled = epics.filter(e => !e.ss && e.status !== 'deferred');
 
   const DIVIDER_H = 28;
@@ -1489,6 +1537,9 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
     e.preventDefault();
     const epic = epics.find(x => x.id === epicId);
     if (!epic || !epic.ss) return;
+    // Prevent moving epics that span any closed sprint
+    const epicSprintIds = SPRINTS.slice(SI[epic.ss], (SI[epic.se || epic.ss] ?? SI[epic.ss]) + 1).map(s => s.id);
+    if (epicSprintIds.some(sid => closedSprints?.[sid])) return;
     const origS = SI[epic.ss];
     const origE = SI[epic.se || epic.ss];
     const startX = e.clientX;
@@ -1546,14 +1597,90 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
     });
   }
 
+  const allExpanded = vis.length > 0 && vis.every(e => !!expEpics[e.id]);
+  const toggleAllEpics = () => {
+    if (allExpanded) {
+      setExpEpics({});
+    } else {
+      const all = {};
+      vis.forEach(e => { all[e.id] = true; });
+      setExpEpics(all);
+    }
+  };
+
   return (
-    <div>
-      <h2 style={{ fontSize: 15, fontWeight: 700, color: t.heading, marginBottom: 3 }}>Timeline Q2 2026</h2>
-      <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 12 }}>
-        Arrastra las barras para mover. Usa los bordes para extender/reducir. Clic en épica para ver HUs.
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <div style={{ padding: '10px 16px 6px 16px', flexShrink: 0 }}>
+        {/* Title + subtitle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: t.heading, marginBottom: 1 }}>Timeline Q2 2026</h2>
+            <div style={{ fontSize: 10, color: t.textMuted }}>Arrastra las barras para mover. Usa los bordes para extender/reducir.</div>
+          </div>
+        </div>
+        {/* Filter + controls row — left: expand + owners · right: sprint chips + carga */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          {/* LEFT: expand toggle + owner filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {config.showStories && (
+              <button onClick={toggleAllEpics} title={allExpanded ? 'Colapsar todas las HUs' : 'Expandir todas las HUs'}
+                style={{ fontSize: 12, background: 'none', border: `1px solid ${t.border}`, borderRadius: 5, color: allExpanded ? t.accent : t.textFaint, padding: '3px 7px', cursor: 'pointer', lineHeight: 1 }}>
+                {allExpanded ? '▲' : '▼'}
+              </button>
+            )}
+            {assignedOwnerIds.length > 0 && (
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <span style={{ fontSize: 9, color: t.textDim, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Dev:</span>
+                {assignedOwnerIds.map(oid => {
+                  const person = allPeople.find(p => p.id === oid);
+                  if (!person) return null;
+                  const active = filterOwners.includes(oid);
+                  const initial = person.name.charAt(0).toUpperCase();
+                  return (
+                    <button key={oid} onClick={() => setFilterOwners(prev => active ? prev.filter(x => x !== oid) : [...prev, oid])}
+                      title={`${active ? 'Quitar filtro' : 'Filtrar por'}: ${person.name}`}
+                      style={{ width: 22, height: 22, borderRadius: '50%', background: active ? person.color : person.color + '33', border: `2px solid ${active ? person.color : person.color + '66'}`, color: active ? '#fff' : person.color, fontSize: 9, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0, lineHeight: 1 }}>
+                      {initial}
+                    </button>
+                  );
+                })}
+                {filterOwners.length > 0 && (
+                  <button onClick={() => setFilterOwners([])} title="Quitar filtro de personas"
+                    style={{ fontSize: 9, background: 'none', border: `1px solid ${t.border}`, borderRadius: 4, color: t.textFaint, padding: '2px 5px', cursor: 'pointer' }}>✕</button>
+                )}
+              </div>
+            )}
+          </div>
+          {/* RIGHT: sprint filter + carga toggle + active filter summary */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {(filterOwners.length > 0 || filterSprint) && (
+              <span style={{ fontSize: 9, color: t.textFaint, fontStyle: 'italic' }}>
+                Mostrando {vis.length} de {allScheduled.length} épicas
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <span style={{ fontSize: 9, color: t.textDim, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Sprint:</span>
+              {SPRINTS.map(s => {
+                const active = filterSprint === s.id;
+                return (
+                  <button key={s.id} onClick={() => setFilterSprint(active ? null : s.id)}
+                    title={`${active ? 'Quitar filtro' : 'Filtrar por'} ${s.full}`}
+                    style={{ fontSize: 9, fontWeight: 700, background: active ? t.accent : 'none', border: `1px solid ${active ? t.accent : t.border}`, borderRadius: 4, color: active ? '#fff' : t.textMuted, padding: '2px 6px', cursor: 'pointer' }}>
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setShowOwnerInitials(p => !p)} title="Mostrar/ocultar inicial del responsable en HUs"
+              style={{ fontSize: 10, fontWeight: 600, background: showOwnerInitials ? t.accent + '22' : 'none', border: `1px solid ${showOwnerInitials ? t.accent : t.border}`, borderRadius: 5, color: showOwnerInitials ? t.accent : t.textFaint, padding: '3px 8px', cursor: 'pointer' }}>
+              ⚖️ Carga
+            </button>
+          </div>
+        </div>
       </div>
-      <div style={{ overflow: 'auto', border: `1px solid ${t.border}`, borderRadius: 8, background: t.bgAlt, position: 'relative', maxHeight: 'calc(100vh - 240px)' }}>
-        <div style={{ minWidth: totalW, position: 'relative' }}>
+      <div style={{ flex: 1, overflow: 'auto', margin: '0 16px 16px 16px', border: `1px solid ${t.border}`, borderRadius: 8, background: t.bgAlt, position: 'relative' }}>
+        <div style={{ minWidth: totalW, position: 'relative', height: totalH + 24 }}>
           <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 10, background: t.bgAlt, borderBottom: `1px solid ${t.border}` }}>
             <div style={{ width: padL, flexShrink: 0, padding: '10px 12px', fontSize: 10, fontWeight: 700, color: t.textDim, position: 'relative', userSelect: 'none' }}>
               ÉPICA
@@ -1596,6 +1723,36 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
               </svg>
             )}
 
+            {/* ── Línea "Hoy" ───────────────────────────────────────── */}
+            {(() => {
+              const tx = getTodayX(padL, colW);
+              if (tx === null) return null;
+              const lc = config.todayLineColor || '#f43f5e';
+              const lw = config.todayLineWidth || 2;
+              const ls = config.todayLineStyle || 'solid';
+              // Use borderLeft so dashed/dotted styles render correctly (background ignores style)
+              return (
+                <div style={{ position: 'absolute', left: tx, top: 0, width: 0, height: Math.max(totalH, 200), borderLeft: `${lw}px ${ls} ${lc}`, zIndex: 6, pointerEvents: 'none', opacity: 0.9 }}>
+                  <div style={{ position: 'absolute', top: 0, left: 3, background: lc, color: '#fff', fontSize: 8, fontWeight: 800, padding: '2px 5px', borderRadius: '0 3px 3px 3px', whiteSpace: 'nowrap', letterSpacing: 0.5 }}>HOY</div>
+                </div>
+              );
+            })()}
+
+            {/* ── Row separators between epic groups ────────────────── */}
+            {(() => {
+              const seps = [];
+              let yo = 0;
+              rows.forEach((row, ri) => {
+                if (ri > 0 && (row.type === 'epic' || row.type === 'epic-unscheduled' || row.type === 'divider')) {
+                  seps.push(
+                    <div key={`rsep-${ri}`} style={{ position: 'absolute', left: 0, top: yo, width: totalW, height: 0, borderTop: `${config.rowSepWidth || 1}px ${config.rowSepStyle || 'solid'} ${config.rowSepColor || '#334155'}`, zIndex: 4, pointerEvents: 'none', opacity: 0.75 }} />
+                  );
+                }
+                yo += rowH(row);
+              });
+              return seps;
+            })()}
+
             {rows.map((row, ri) => {
               let yo = 0; for (let i = 0; i < ri; i++) yo += rowH(rows[i]);
               const h = rowH(row);
@@ -1607,13 +1764,17 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
                 const eIdx = isDrag ? drag.newE : SI[epic.se || epic.ss];
                 const bL = padL + sIdx * colW + 3;
                 const bW = (eIdx - sIdx + 1) * colW - 6;
-                const ownerColor = team.find(m => m.id === epic.owners[0])?.color || '#64748b';
+                const ownerColor = allPeople.find(m => m.id === epic.owners[0])?.color || '#64748b';
                 const oc = epic.color || ownerColor;
+                // Check if this epic spans any closed sprint (locks dragging)
+                const epicSprintRange = SPRINTS.slice(sIdx, eIdx + 1).map(s => s.id);
+                const epicIsLocked = epicSprintRange.some(sid => closedSprints?.[sid]);
                 const doneStories = epic.stories.filter(s => s.done).length;
                 const totalStories = epic.stories.length;
                 const progPct = totalStories > 0 ? Math.round((doneStories / totalStories) * 100) : 0;
                 const showProgress = !epic.noProgress && totalStories > 0;
                 const isComplete = totalStories > 0 && doneStories === totalStories;
+                const carryOverCount = epic.stories.filter(s => !s.done && s.sprint && isPastSprint(s.sprint)).length;
 
                 return (
                   <div key={epic.id} style={{ position: 'absolute', top: yo, left: 0, width: totalW, height: h, display: 'flex', alignItems: 'center', borderBottom: `1px solid ${t.border}22` }}>
@@ -1629,26 +1790,29 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
                       <span style={{ fontSize: config.epicLabelSize || 12, fontWeight: 700, color: isComplete ? '#22c55e' : t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{epic.label}</span>
                       {isComplete && <span style={{ fontSize: 9, fontWeight: 800, background: '#15803d', color: '#bbf7d0', padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>✓ DONE</span>}
                       {!isComplete && <SizeBadge size={epic.size} small />}
+                      {carryOverCount > 0 && <span title={`${carryOverCount} HU${carryOverCount > 1 ? 's' : ''} sin cerrar en sprint pasado`} style={{ fontSize: 9, fontWeight: 800, background: '#ef444422', border: '1px solid #ef444466', color: '#ef4444', padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>⚠{carryOverCount}</span>}
                     </div>
                     <div style={{ position: 'absolute', left: bL, top: 5, height: h - 10, width: bW,
                       background: isComplete ? '#15803d44' : `${oc}22`,
-                      border: isComplete ? '1.5px solid #22c55e' : `1px solid ${oc}88`,
+                      border: isComplete ? '1.5px solid #22c55e' : epicIsLocked ? `1.5px solid ${oc}bb` : `1px solid ${oc}88`,
                       borderRadius: 4, overflow: 'hidden', zIndex: 3, userSelect: 'none' }}>
                       {/* Progress fill — full green when complete */}
                       {isComplete && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%', background: '#22c55e33', pointerEvents: 'none' }} />}
                       {showProgress && !isComplete && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${progPct}%`, background: `${oc}55`, transition: 'width 0.3s', pointerEvents: 'none' }} />}
-                      <div onMouseDown={e => startDrag(e, epic.id, 'left')}
-                        style={{ position: 'absolute', left: 0, top: 0, width: 7, height: '100%', cursor: 'ew-resize', borderRadius: '4px 0 0 4px', background: isDrag && drag.type === 'left' ? `${oc}66` : 'transparent', zIndex: 2 }} />
-                      <div onMouseDown={e => startDrag(e, epic.id, 'move')}
-                        style={{ position: 'absolute', left: 7, right: 7, top: 0, bottom: 0, cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', overflow: 'hidden', zIndex: 1 }}>
+                      {!epicIsLocked && <div onMouseDown={e => startDrag(e, epic.id, 'left')}
+                        style={{ position: 'absolute', left: 0, top: 0, width: 7, height: '100%', cursor: 'ew-resize', borderRadius: '4px 0 0 4px', background: isDrag && drag.type === 'left' ? `${oc}66` : 'transparent', zIndex: 2 }} />}
+                      <div onMouseDown={!epicIsLocked ? e => startDrag(e, epic.id, 'move') : undefined}
+                        style={{ position: 'absolute', left: 7, right: 7, top: 0, bottom: 0, cursor: epicIsLocked ? 'default' : 'grab', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', overflow: 'hidden', zIndex: 1 }}>
                         <span style={{ fontSize: Math.max(9, (config.epicLabelSize || 12) - 1), fontWeight: 600, color: isComplete ? '#22c55e' : oc, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{epic.label}</span>
                         {isComplete
                           ? <span style={{ fontSize: 11, fontWeight: 800, color: '#22c55e', flexShrink: 0, marginLeft: 6 }}>✓</span>
-                          : showProgress && <span style={{ fontSize: 10, fontWeight: 700, color: oc, flexShrink: 0, marginLeft: 6, background: `${oc}22`, padding: '1px 5px', borderRadius: 4 }}>{doneStories}/{totalStories}</span>
+                          : epicIsLocked
+                            ? <span style={{ fontSize: 10, color: oc, flexShrink: 0, marginLeft: 6, opacity: 0.7 }}>🔒</span>
+                            : showProgress && <span style={{ fontSize: 10, fontWeight: 700, color: oc, flexShrink: 0, marginLeft: 6, background: `${oc}22`, padding: '1px 5px', borderRadius: 4 }}>{doneStories}/{totalStories}</span>
                         }
                       </div>
-                      <div onMouseDown={e => startDrag(e, epic.id, 'right')}
-                        style={{ position: 'absolute', right: 0, top: 0, width: 7, height: '100%', cursor: 'ew-resize', borderRadius: '0 4px 4px 0', background: isDrag && drag.type === 'right' ? `${oc}66` : 'transparent', zIndex: 2 }} />
+                      {!epicIsLocked && <div onMouseDown={e => startDrag(e, epic.id, 'right')}
+                        style={{ position: 'absolute', right: 0, top: 0, width: 7, height: '100%', cursor: 'ew-resize', borderRadius: '0 4px 4px 0', background: isDrag && drag.type === 'right' ? `${oc}66` : 'transparent', zIndex: 2 }} />}
                     </div>
                   </div>
                 );
@@ -1663,7 +1827,7 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
                 );
               } else if (row.type === 'epic-unscheduled') {
                 const epic = row.epic;
-                const ownerColor = team.find(m => m.id === epic.owners[0])?.color || '#64748b';
+                const ownerColor = allPeople.find(m => m.id === epic.owners[0])?.color || '#64748b';
                 const oc = epic.color || ownerColor;
                 return (
                   <div key={epic.id} onClick={() => onNavigateToEpic && onNavigateToEpic(epic.id)} title="Ir a épica"
@@ -1683,7 +1847,7 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
               } else {
                 const story = row.story;
                 const epic = row.epic;
-                const oc = team.find(m => m.id === story.owner)?.color || '#64748b';
+                const oc = allPeople.find(m => m.id === story.owner)?.color || '#64748b';
                 const navToEpic = () => onNavigateToEpic && onNavigateToEpic(epic.id);
                 if (!story.sprint) return (
                   <div key={story.id} onClick={navToEpic} title="Ir a épica"
@@ -1702,8 +1866,18 @@ function TimelineTab({ epics, setEpics, team, config, onNavigateToEpic }) {
                     <div style={{ width: padL, padding: '0 10px 0 30px', fontSize: 9, color: story.done ? t.textDim : t.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: story.done ? 'line-through' : 'none' }}>
                       {story.done ? '✓' : '○'} {story.title} <SizeBadge size={story.size} small />
                     </div>
-                    <div style={{ position: 'absolute', left: bl, top: 3, height: h - 6, width: bw, background: `${oc}22`, border: `1px solid ${oc}44`, borderRadius: 3, display: 'flex', alignItems: 'center', padding: '0 5px', zIndex: 3 }}>
-                      <span style={{ fontSize: 8, color: oc, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{story.title}</span>
+                    <div style={{ position: 'absolute', left: bl, top: 3, height: h - 6, width: bw, background: `${oc}22`, border: `1px solid ${oc}44`, borderRadius: 3, display: 'flex', alignItems: 'center', padding: '0 4px 0 5px', gap: 3, zIndex: 3, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 8, color: oc, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{story.title}</span>
+                      {showOwnerInitials && story.owner && (
+                        <div style={{
+                          width: Math.max(11, Math.min(storyH - 8, 16)), height: Math.max(11, Math.min(storyH - 8, 16)),
+                          borderRadius: '50%', background: oc, border: '1.5px solid rgba(255,255,255,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 7, fontWeight: 800, color: '#fff', flexShrink: 0, lineHeight: 1,
+                        }} title={allPeople.find(m => m.id === story.owner)?.name || story.owner}>
+                          {(allPeople.find(m => m.id === story.owner)?.name?.[0] || story.owner?.[0] || '?').toUpperCase()}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1852,7 +2026,7 @@ function CostPanel({ team, setTeam, config, setConfig, epics }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIG PANEL
 // ═══════════════════════════════════════════════════════════════════════════════
-function ConfigPanel({ config, setConfig, team, setTeam, exportState, importState, resetToDefaults, demoMode, setDemoMode }) {
+function ConfigPanel({ config, setConfig, team, setTeam, stakeholders, setStakeholders, exportState, importState, resetToDefaults, demoMode, setDemoMode }) {
   const t = useTheme();
   const fileRef = useRef(null);
 
@@ -1950,6 +2124,7 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
       <div style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 8, padding: 14 }}>
         <Label>Opciones de Timeline</Label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* General */}
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: t.text, cursor: 'pointer' }}>
             <input type="checkbox" checked={config.showDeps} onChange={e => setConfig(p => ({ ...p, showDeps: e.target.checked }))} />
             Mostrar líneas de dependencia
@@ -1972,16 +2147,85 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
               style={{ flex: 1 }} />
             <span style={{ fontSize: 12, fontWeight: 700, color: t.heading, width: 36, textAlign: 'right' }}>{config.epicLabelSize || 12}px</span>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Color dependencias:</span>
-            <input type="color" value={config.depColor || '#f59e0b'}
-              onChange={e => setConfig(p => ({ ...p, depColor: e.target.value }))}
-              style={{ width: 36, height: 28, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0, background: 'none' }} />
-            <span style={{ fontSize: 11, color: t.textMuted, fontFamily: 'monospace' }}>{config.depColor || '#f59e0b'}</span>
-            <button onClick={() => setConfig(p => ({ ...p, depColor: '#f59e0b' }))}
-              style={{ fontSize: 10, background: 'none', border: `1px solid ${t.border}`, borderRadius: 4, color: t.textMuted, padding: '3px 8px', cursor: 'pointer' }}>
-              Reset
-            </button>
+
+          {/* ── Dependencias ─────────────────────────────── */}
+          <div style={{ marginTop: 6, paddingTop: 8, borderTop: `1px solid ${t.border}44` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Dependencias</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Color:</span>
+              <input type="color" value={config.depColor || '#f59e0b'}
+                onChange={e => setConfig(p => ({ ...p, depColor: e.target.value }))}
+                style={{ width: 36, height: 28, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0, background: 'none' }} />
+              <span style={{ fontSize: 11, color: t.textMuted, fontFamily: 'monospace' }}>{config.depColor || '#f59e0b'}</span>
+              <button onClick={() => setConfig(p => ({ ...p, depColor: '#f59e0b' }))}
+                style={{ fontSize: 10, background: 'none', border: `1px solid ${t.border}`, borderRadius: 4, color: t.textMuted, padding: '3px 8px', cursor: 'pointer' }}>
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* ── Separadores entre épicas ──────────────────── */}
+          <div style={{ marginTop: 6, paddingTop: 8, borderTop: `1px solid ${t.border}44` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Separadores entre épicas</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Color:</span>
+              <input type="color" value={config.rowSepColor || '#334155'}
+                onChange={e => setConfig(p => ({ ...p, rowSepColor: e.target.value }))}
+                style={{ width: 36, height: 28, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0, background: 'none' }} />
+              <span style={{ fontSize: 11, color: t.textMuted, fontFamily: 'monospace' }}>{config.rowSepColor || '#334155'}</span>
+              <button onClick={() => setConfig(p => ({ ...p, rowSepColor: '#334155' }))}
+                style={{ fontSize: 10, background: 'none', border: `1px solid ${t.border}`, borderRadius: 4, color: t.textMuted, padding: '3px 8px', cursor: 'pointer' }}>
+                Reset
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Grosor:</span>
+              <input type="range" min="1" max="4" step="1" value={config.rowSepWidth || 1}
+                onChange={e => setConfig(p => ({ ...p, rowSepWidth: parseInt(e.target.value) }))}
+                style={{ flex: 1 }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.heading, width: 36, textAlign: 'right' }}>{config.rowSepWidth || 1}px</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Estilo:</span>
+              {['solid', 'dashed', 'dotted', 'double'].map(s => (
+                <button key={s} onClick={() => setConfig(p => ({ ...p, rowSepStyle: s }))}
+                  style={{ fontSize: 10, fontWeight: (config.rowSepStyle || 'solid') === s ? 700 : 400, background: (config.rowSepStyle || 'solid') === s ? t.accent + '22' : 'none', border: `1px solid ${(config.rowSepStyle || 'solid') === s ? t.accent : t.border}`, borderRadius: 4, color: (config.rowSepStyle || 'solid') === s ? t.accent : t.textMuted, padding: '3px 10px', cursor: 'pointer' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Línea Hoy ────────────────────────────────── */}
+          <div style={{ marginTop: 6, paddingTop: 8, borderTop: `1px solid ${t.border}44` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Línea "Hoy"</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Color:</span>
+              <input type="color" value={config.todayLineColor || '#f43f5e'}
+                onChange={e => setConfig(p => ({ ...p, todayLineColor: e.target.value }))}
+                style={{ width: 36, height: 28, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0, background: 'none' }} />
+              <span style={{ fontSize: 11, color: t.textMuted, fontFamily: 'monospace' }}>{config.todayLineColor || '#f43f5e'}</span>
+              <button onClick={() => setConfig(p => ({ ...p, todayLineColor: '#f43f5e' }))}
+                style={{ fontSize: 10, background: 'none', border: `1px solid ${t.border}`, borderRadius: 4, color: t.textMuted, padding: '3px 8px', cursor: 'pointer' }}>
+                Reset
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Grosor:</span>
+              <input type="range" min="1" max="5" step="1" value={config.todayLineWidth || 2}
+                onChange={e => setConfig(p => ({ ...p, todayLineWidth: parseInt(e.target.value) }))}
+                style={{ flex: 1 }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.heading, width: 36, textAlign: 'right' }}>{config.todayLineWidth || 2}px</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: t.text, whiteSpace: 'nowrap' }}>Estilo:</span>
+              {['solid', 'dashed', 'dotted'].map(s => (
+                <button key={s} onClick={() => setConfig(p => ({ ...p, todayLineStyle: s }))}
+                  style={{ fontSize: 10, fontWeight: (config.todayLineStyle || 'solid') === s ? 700 : 400, background: (config.todayLineStyle || 'solid') === s ? t.accent + '22' : 'none', border: `1px solid ${(config.todayLineStyle || 'solid') === s ? t.accent : t.border}`, borderRadius: 4, color: (config.todayLineStyle || 'solid') === s ? t.accent : t.textMuted, padding: '3px 10px', cursor: 'pointer' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2057,6 +2301,61 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
                     style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>×</button>
                 </div>
 
+                {/* Ausencias por sprint — días exactos */}
+                {(() => {
+                  const abs = m.absences || [];
+                  // Normalize legacy string entries to {sprintId, days: 10}
+                  const normAbs = abs.map(a => typeof a === 'string' ? { sprintId: a, days: 10 } : a);
+                  const getEntry = (spId) => normAbs.find(a => a.sprintId === spId) || null;
+                  const totalAbsDays = normAbs.reduce((s, a) => s + (a.days || 0), 0);
+
+                  const setDays = (spId, days) => setTeam(p => p.map(x => {
+                    if (x.id !== m.id) return x;
+                    const cur = (x.absences || []).map(a => typeof a === 'string' ? { sprintId: a, days: 10 } : a);
+                    if (days <= 0) return { ...x, absences: cur.filter(a => a.sprintId !== spId) };
+                    const exists = cur.find(a => a.sprintId === spId);
+                    const next = exists
+                      ? cur.map(a => a.sprintId === spId ? { ...a, days } : a)
+                      : [...cur, { sprintId: spId, days }];
+                    return { ...x, absences: next };
+                  }));
+
+                  return (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${t.border}22` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                        <span style={{ fontSize: 9, color: t.textDim, fontWeight: 700 }}>🏖 Ausencias por sprint</span>
+                        <span style={{ fontSize: 9, color: t.textFaint }}>(días exactos · 0 = presente · 10 = sprint completo)</span>
+                        {totalAbsDays > 0 && <span style={{ fontSize: 9, color: '#ef4444', marginLeft: 'auto', fontWeight: 700 }}>−{totalAbsDays}d total</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {SPRINTS.map(sp => {
+                          const entry = getEntry(sp.id);
+                          const days = entry ? entry.days : 0;
+                          const isPartial = days > 0 && days < 10;
+                          const isFull = days >= 10;
+                          return (
+                            <div key={sp.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                              background: isFull ? '#ef444418' : isPartial ? '#f59e0b18' : t.bgAlt,
+                              border: `1px solid ${isFull ? '#ef444466' : isPartial ? '#f59e0b66' : t.border}`,
+                              borderRadius: 5, padding: '4px 6px', minWidth: 46 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: isFull ? '#ef4444' : isPartial ? '#f59e0b' : t.textDim }}>
+                                {sp.label}{sp.current ? '★' : ''}
+                              </span>
+                              <input type="number" min="0" max="10" step="1" value={days}
+                                onChange={e => setDays(sp.id, Math.min(10, Math.max(0, parseInt(e.target.value) || 0)))}
+                                title={`Días ausente en ${sp.full} (0–10)`}
+                                style={{ width: 34, fontSize: 11, fontWeight: 700, textAlign: 'center',
+                                  color: isFull ? '#ef4444' : isPartial ? '#f59e0b' : t.textMuted,
+                                  background: 'transparent', border: 'none', outline: 'none', padding: 0 }} />
+                              <span style={{ fontSize: 8, color: t.textFaint }}>días</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Rows 2+: size inputs + sprint selector — only when custom is on */}
                 {hasCustom && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, borderTop: `1px solid ${t.border}` }}>
@@ -2111,9 +2410,36 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
             );
           })}
         </div>
-        <button onClick={() => setTeam(p => [...p, { id: uid(), name: 'Nuevo miembro', color: '#94a3b8', since: '', capMult: 1.0, note: '', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null }])}
+        <button onClick={() => setTeam(p => [...p, { id: uid(), name: 'Nuevo miembro', color: '#94a3b8', since: '', capMult: 1.0, note: '', type: 'internal', monthlyCost: 0, hourlyRate: 0, customSizes: null, absences: [] }])}
           style={{ marginTop: 8, fontSize: 11, background: t.accent, border: 'none', borderRadius: 5, color: '#fff', padding: '5px 14px', cursor: 'pointer', fontWeight: 600 }}>
           + Añadir miembro
+        </button>
+      </div>
+
+      {/* PM / Responsables no-dev */}
+      <div style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 8, padding: 14, gridColumn: '1 / -1' }}>
+        <Label>PM / Responsables no-dev</Label>
+        <div style={{ fontSize: 10, color: t.textMuted, marginBottom: 8 }}>
+          Aparecen como owners en épicas e historias, pero <strong>no cuentan en los cálculos de capacidad</strong>.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {(stakeholders || []).map(s => (
+            <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'center', background: t.bg, border: `1px solid ${t.border}`, borderRadius: 6, padding: '6px 10px' }}>
+              <input type="color" value={s.color}
+                onChange={e => setStakeholders(p => p.map(x => x.id === s.id ? { ...x, color: e.target.value } : x))}
+                style={{ width: 22, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+              <input value={s.name}
+                onChange={e => setStakeholders(p => p.map(x => x.id === s.id ? { ...x, name: e.target.value } : x))}
+                style={{ flex: 1, fontSize: 12, background: 'transparent', border: 'none', color: t.text, outline: 'none', fontFamily: 'inherit' }} />
+              <span style={{ fontSize: 9, color: t.textFaint, background: s.color + '22', border: `1px solid ${s.color}44`, borderRadius: 10, padding: '1px 8px', fontWeight: 700 }}>no-dev</span>
+              <button onClick={() => setStakeholders(p => p.filter(x => x.id !== s.id))}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setStakeholders(p => [...p, { id: uid(), name: 'Nuevo responsable', color: '#a855f7' }])}
+          style={{ marginTop: 8, fontSize: 11, background: t.accent, border: 'none', borderRadius: 5, color: '#fff', padding: '5px 14px', cursor: 'pointer', fontWeight: 600 }}>
+          + Añadir responsable
         </button>
       </div>
 
@@ -2121,7 +2447,7 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
       <div style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 8, padding: 14, gridColumn: '1 / -1' }}>
         <Label>Modo Demo (grabación de pantalla)</Label>
         <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 10 }}>
-          Oculta datos sensibles de Giunti para capturas o vídeos de demo.
+          Oculta datos sensibles para capturas o vídeos de demo.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {[
@@ -2144,6 +2470,21 @@ function ConfigPanel({ config, setConfig, team, setTeam, exportState, importStat
             {demoMode === 'replace' ? '⚠ Mostrando datos genéricos — los datos reales no se modifican' : '⚠ Blur activo — pasa el cursor sobre texto para verlo'}
           </div>
         )}
+      </div>
+
+      {/* Carlo view label — spans both columns */}
+      <div style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 8, padding: 14, gridColumn: '1 / -1' }}>
+        <Label>Nombre del botón de presentación (pestaña Semanal)</Label>
+        <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 8 }}>
+          Personaliza el nombre del botón de vista de presentación en la pestaña Semanal.
+        </div>
+        <input
+          type="text"
+          value={config.carloViewLabel || 'Vista de Stakeholder'}
+          onChange={e => setConfig(p => ({ ...p, carloViewLabel: e.target.value }))}
+          placeholder="Vista de Carlo"
+          style={{ fontSize: 12, color: t.text, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 5, padding: '6px 10px', width: 280, outline: 'none' }}
+        />
       </div>
 
       {/* Export/Import — spans both columns */}
@@ -2377,7 +2718,7 @@ const ITEM_PRIORITIES = [
 ];
 
 // ─── Carlo View (slide-style overlay) ───────────────────────────────────────
-function CarloView({ session, onClose, epics }) {
+function CarloView({ session, onClose, epics, config }) {
   const sp = SPRINTS.find(s => s.id === session.sprint);
   const getStatus = (a) => a.status || (a.done ? 'completado' : 'pendiente');
   const sc = (id) => ITEM_STATUSES.find(s => s.id === id) || ITEM_STATUSES[3];
@@ -2429,14 +2770,14 @@ function CarloView({ session, onClose, epics }) {
         <div style={{ background: C.bgAlt, borderRadius: 12, padding: '52px 56px', minHeight: 200, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: `5px solid ${C.accent}` }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 4, marginBottom: 20 }}>W E E K L Y  S T A T U S</div>
-            <div style={{ fontSize: 40, fontWeight: 800, color: C.text, lineHeight: 1.1, marginBottom: 20 }}>Magento Channel</div>
+            <div style={{ fontSize: 40, fontWeight: 800, color: C.text, lineHeight: 1.1, marginBottom: 20 }}>{config?.channelName || 'My Channel'}</div>
             <div style={{ width: 110, height: 4, background: C.accent, borderRadius: 2, marginBottom: 28 }} />
             <div style={{ display: 'flex', gap: 32 }}>
               <div><span style={{ color: C.text, fontWeight: 700, fontSize: 13 }}>Fecha: </span><span style={{ color: C.text, fontSize: 13 }}>{session.date}</span></div>
               {sp && <div><span style={{ color: C.text, fontWeight: 700, fontSize: 13 }}>Sprint: </span><span style={{ color: C.text, fontSize: 13 }}>{session.sprintNum || sp.label}</span></div>}
             </div>
           </div>
-          <div className="demo-sensitive" style={{ fontSize: 11, color: C.textDim, marginTop: 28 }}>Giunti Psychometrics · Canal Digital Magento</div>
+          <div className="demo-sensitive" style={{ fontSize: 11, color: C.textDim, marginTop: 28 }}>{config?.companyName || 'My Company'} · {config?.channelName || 'My Channel'}</div>
         </div>
 
         {/* SLIDE 2 — Sprint Actual */}
@@ -2494,7 +2835,7 @@ function CarloView({ session, onClose, epics }) {
               </table>
             </div>
           )}
-          <div style={{ fontSize: 10, color: C.textDim, marginTop: 14 }}>Magento Channel · Weekly Status | {session.date}</div>
+          <div style={{ fontSize: 10, color: C.textDim, marginTop: 14 }}>{config?.channelName || 'My Channel'} · Weekly Status | {session.date}</div>
         </div>
 
         {/* SLIDE 3 — Próximos Pasos & Cierre (desplegable) */}
@@ -2542,7 +2883,7 @@ function CarloView({ session, onClose, epics }) {
                 ))}
               </div>
               <div style={{ fontStyle: 'italic', fontSize: 14, color: C.accent, marginBottom: 20 }}>¿Preguntas o puntos adicionales?</div>
-              <div className="demo-sensitive" style={{ fontSize: 10, color: C.textDim }}>Magento Channel · Weekly Status · Giunti Psychometrics</div>
+              <div className="demo-sensitive" style={{ fontSize: 10, color: C.textDim }}>{config?.channelName || 'My Channel'} · Weekly Status · {config?.companyName || 'My Company'}</div>
             </div>
           )}
         </div>
@@ -2551,12 +2892,134 @@ function CarloView({ session, onClose, epics }) {
   );
 }
 
+// ─── Export Carlo PDF (print-ready window, slides 1 & 2 only) ───────────────
+function exportCarloPDF(session, epics, config) {
+  const sp = SPRINTS.find(s => s.id === session.sprint);
+  const getEpic = (epicId) => (epics || []).find(e => e.id === epicId);
+  const sc = (id) => ITEM_STATUSES.find(s => s.id === id) || ITEM_STATUSES[3];
+  const pc = (id) => ITEM_PRIORITIES.find(p => p.id === (id || 'alta')) || ITEM_PRIORITIES[0];
+  const getStatus = (a) => a.status || (a.done ? 'completado' : 'pendiente');
+
+  const rows = (session.actions || []).map((a, idx) => {
+    const s = sc(getStatus(a));
+    const p = pc(a.priority);
+    const epic = getEpic(a.epicId);
+    const bg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+    const epicHtml = epic
+      ? `<div style="font-weight:700;color:#2563eb">${epic.label}</div>${epic.sublabel ? `<div style="color:#64748b;margin-top:1px">${epic.sublabel}</div>` : ''}`
+      : `<span style="color:#94a3b8;font-style:italic">—</span>`;
+    return `<tr style="background:${bg};border-top:1px solid #e2e8f0">
+      <td style="padding:6px 10px;color:#1e293b;line-height:1.35;word-break:break-word">${a.text || '—'}</td>
+      <td style="padding:6px 10px;line-height:1.3;word-break:break-word">${epicHtml}</td>
+      <td style="padding:6px 10px;color:#1d4ed8;text-align:center;white-space:nowrap">${a.owner ? `[${a.owner}]` : '—'}</td>
+      <td style="padding:6px 10px;text-align:center;white-space:nowrap"><span style="color:${s.color};font-weight:700">${s.icon} ${s.label}</span></td>
+      <td style="padding:6px 10px;text-align:center;white-space:nowrap">${p.dot} ${p.label}</td>
+      <td style="padding:6px 10px;color:#374151;line-height:1.45;word-break:break-word">${a.notes || ''}</td>
+    </tr>`;
+  }).join('');
+
+  const tableHtml = (session.actions || []).length > 0 ? `
+    <div style="border-radius:6px;overflow:hidden;border:1px solid #e2e8f0">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">
+        <colgroup>
+          <col style="width:17%">
+          <col style="width:14%">
+          <col style="width:9%">
+          <col style="width:10%">
+          <col style="width:7%">
+          <col style="width:43%">
+        </colgroup>
+        <thead>
+          <tr style="background:#dbeafe">
+            <th style="padding:8px 10px;text-align:left;color:#1e293b;font-weight:700">Tarea / User Story</th>
+            <th style="padding:8px 10px;text-align:left;color:#1e293b;font-weight:700">Épica</th>
+            <th style="padding:8px 10px;text-align:center;color:#1e293b;font-weight:700">Responsable</th>
+            <th style="padding:8px 10px;text-align:center;color:#1e293b;font-weight:700">Estado</th>
+            <th style="padding:8px 10px;text-align:center;color:#1e293b;font-weight:700">Prioridad</th>
+            <th style="padding:8px 10px;text-align:left;color:#1e293b;font-weight:700">Notas / Bloqueo</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>` : '<p style="color:#94a3b8;font-size:13px">Sin tareas registradas.</p>';
+
+  const sprintLabel = sp ? `${session.sprintNum || sp.label}` : '';
+  const sprintDates = sp ? ` · ${sp.dates}` : '';
+  const objectiveHtml = session.sprintObjective
+    ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1e293b;line-height:1.5"><span style="font-weight:700">Objetivo del sprint: </span>${session.sprintObjective}</div>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Status · ${session.date}</title>
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #ffffff;
+      color: #1e293b;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      width: 297mm;
+      min-height: 210mm;
+      padding: 14mm 18mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+    .page:last-child { page-break-after: avoid; }
+    .cover { border-left: 6px solid #2563eb; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+  <!-- Slide 1: Cover -->
+  <div class="page cover">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:5px;margin-bottom:20px">W E E K L Y &nbsp; S T A T U S</div>
+      <div style="font-size:44px;font-weight:800;color:#0f172a;line-height:1.05;margin-bottom:14px">${(config && config.channelName) || 'My Channel'}</div>
+      <div style="width:100px;height:4px;background:#2563eb;border-radius:2px;margin-bottom:24px"></div>
+      <div style="display:flex;gap:36px">
+        <div style="font-size:13px"><span style="font-weight:700">Fecha: </span>${session.date}</div>
+        ${sprintLabel ? `<div style="font-size:13px"><span style="font-weight:700">Sprint: </span>${sprintLabel}</div>` : ''}
+      </div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8">${(config && config.companyName) || 'My Company'} · ${(config && config.channelName) || 'My Channel'}</div>
+  </div>
+
+  <!-- Slide 2: Sprint Actual -->
+  <div class="page">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+      <div style="font-size:20px;font-weight:800;color:#0f172a">Sprint Actual</div>
+      ${sprintLabel ? `<div style="font-size:11px;color:#64748b">${sprintLabel}${sprintDates}</div>` : ''}
+    </div>
+    ${objectiveHtml}
+    ${tableHtml}
+    <div style="font-size:9px;color:#94a3b8;margin-top:10px">${(config && config.channelName) || 'My Channel'} · Weekly Status | ${session.date}</div>
+  </div>
+
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
 // ─── SemanalTab (edit mode) ──────────────────────────────────────────────────
-function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
+function SemanalTab({ weeklySync, setWeeklySync, team, epics, config }) {
   const t = useTheme();
-  const [selectedId, setSelectedId] = useState(null);
-  const [carloView, setCarloView] = useState(false);
+  const [selectedId, setSelectedId]       = useState(null);
+  const [carloView, setCarloView]         = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [semSidebarOpen, setSemSidebarOpen]   = useState(false);
+  const [emailDraftOpen, setEmailDraftOpen]   = useState(false);
 
   const getSelected = () => {
     if (selectedId) return weeklySync.find(s => s.id === selectedId) || weeklySync[0] || null;
@@ -2624,15 +3087,20 @@ function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
 
   return (
     <>
-      {carloView && sel && <CarloView session={sel} onClose={() => setCarloView(false)} epics={epics || []} />}
+      {carloView && sel && <CarloView session={sel} onClose={() => setCarloView(false)} epics={epics || []} config={config} />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: semSidebarOpen ? '260px 1fr' : '36px 1fr', gap: 0, alignItems: 'start', height: '100%' }}>
 
-        {/* LEFT: session list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={addSession} style={{ background: t.accent, border: 'none', borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 600, padding: '7px 12px', cursor: 'pointer', width: '100%' }}>
-            + Nueva reunión
-          </button>
+        {/* LEFT: session list / collapsed strip */}
+        {semSidebarOpen ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 12px 0 0', borderRight: `1px solid ${t.border}`, paddingRight: 12 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={addSession} style={{ background: t.accent, border: 'none', borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 600, padding: '7px 10px', cursor: 'pointer', flex: 1 }}>
+              + Nueva reunión
+            </button>
+            <button onClick={() => setSemSidebarOpen(false)} title="Colapsar panel"
+              style={{ background: 'none', border: `1px solid ${t.border}`, borderRadius: 6, color: t.textDim, fontSize: 12, cursor: 'pointer', padding: '7px 8px' }}>◀</button>
+          </div>
 
           {openActions.length > 0 && (
             <div style={{ background: t.bgAlt, border: `1px solid #f59e0b44`, borderRadius: 8, padding: '8px 10px' }}>
@@ -2656,21 +3124,42 @@ function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
               <div key={s.id} onClick={() => setSelectedId(s.id)}
                 style={{ background: isSelected ? t.accent + '18' : t.bgAlt, border: `1px solid ${isSelected ? t.accent : t.border}`, borderRadius: 7, padding: '9px 11px', cursor: 'pointer', transition: 'border-color 0.15s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: isSelected ? t.accent : t.heading }}>{s.date}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isSelected ? t.accent : t.heading }}>{s.date}</span>
+                    {(() => {
+                      const autoLabel = sprintLabelForDate(s.date);
+                      const label = sp ? sp.label : autoLabel;
+                      return label ? (
+                        <span style={{ fontSize: 9, fontWeight: 800, color: isSelected ? t.accent : t.textMuted, background: isSelected ? t.accent + '18' : t.bgDeep, border: `1px solid ${isSelected ? t.accent + '44' : t.border}`, padding: '1px 6px', borderRadius: 4, letterSpacing: 0.5 }}>{label}</span>
+                      ) : null;
+                    })()}
+                  </div>
                   {pendingCount > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', background: '#fef3c722', border: '1px solid #f59e0b44', padding: '1px 6px', borderRadius: 8 }}>{pendingCount} pend.</span>}
                 </div>
                 <div style={{ fontSize: 10, color: t.textMuted, marginBottom: 2 }}>
-                  {sp ? `${sp.full}` : '—'}{s.sprintNum ? ` (Sprint ${s.sprintNum})` : ''} · {(s.actions || []).length} ítems
+                  {sp ? sp.full : '—'}{s.sprintNum ? ` · Sprint ${s.sprintNum}` : ''} · {(s.actions || []).length} ítems
                 </div>
                 {s.sprintObjective && <div style={{ fontSize: 10, color: t.textFaint, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{s.sprintObjective}</div>}
               </div>
             );
           })}
         </div>
+        ) : (
+          /* Collapsed strip */
+          <div onClick={() => setSemSidebarOpen(true)}
+            style={{ width: 36, borderRight: `1px solid ${t.border}`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 12, gap: 6 }}
+            title="Abrir panel de reuniones">
+            <span style={{ fontSize: 14 }}>📋</span>
+            <span style={{ fontSize: 9, writingMode: 'vertical-rl', color: t.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Reuniones</span>
+            {openActions.length > 0 && (
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b', background: '#fef3c722', border: '1px solid #f59e0b44', padding: '2px 4px', borderRadius: 8 }}>{openActions.length}</span>
+            )}
+          </div>
+        )}
 
         {/* RIGHT: session detail */}
         {sel && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: semSidebarOpen ? 2 : 12 }}>
 
             {/* Header */}
             <div style={{ background: t.bgAlt, border: `1px solid ${t.border}`, borderRadius: 8, padding: 14 }}>
@@ -2679,7 +3168,11 @@ function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => setCarloView(true)}
                     style={{ background: '#0f1e3d', border: '1px solid #3b82f6', borderRadius: 5, color: '#93c5fd', fontSize: 11, fontWeight: 700, padding: '5px 14px', cursor: 'pointer' }}>
-                    🎬 Vista de Carlo
+                    🎬 {config?.carloViewLabel || 'Vista de Carlo'}
+                  </button>
+                  <button onClick={() => exportCarloPDF(sel, epics, config)}
+                    style={{ background: '#0f2818', border: '1px solid #22c55e', borderRadius: 5, color: '#86efac', fontSize: 11, fontWeight: 700, padding: '5px 14px', cursor: 'pointer' }}>
+                    📄 Exportar PDF
                   </button>
                   {confirmDeleteId === sel.id ? (
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
@@ -2764,7 +3257,7 @@ function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
                         style={{ fontSize: 10, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 4, color: t.textMuted, padding: '4px 5px', outline: 'none', minWidth: 96 }}>
                         <option value="">Responsable</option>
                         {team.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                        <option value="Carlo">Carlo</option>
+                        {config?.stakeholderName && <option value={config.stakeholderName}>{config.stakeholderName}</option>}
                         <option value="Samuel">Samuel</option>
                       </select>
                       <button onClick={() => deleteAction(sel.id, a.id)} style={{ background: 'none', border: 'none', color: t.textDim, cursor: 'pointer', fontSize: 15 }}>×</button>
@@ -2851,18 +3344,26 @@ function SemanalTab({ weeklySync, setWeeklySync, team, epics }) {
               };
               const emailVal = sel.emailCarlo !== undefined ? sel.emailCarlo : '';
               return (
-                <div style={{ background: t.bgAlt, border: `1px solid #2563eb44`, borderRadius: 8, padding: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Label>📧 Borrador email a Carlo (post-status)</Label>
-                    <button
-                      onClick={() => updateSession(sel.id, { emailCarlo: generateEmail() })}
-                      style={{ background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 5, color: t.textMuted, fontSize: 10, fontWeight: 700, padding: '4px 10px', cursor: 'pointer' }}>
-                      ↻ Generar desde reunión
-                    </button>
+                <div style={{ background: t.bgAlt, border: `1px solid #2563eb44`, borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer' }}
+                    onClick={() => setEmailDraftOpen(p => !p)}>
+                    <Label style={{ cursor: 'pointer' }}>📧 Borrador email a Carlo (post-status)</Label>
+                    <span style={{ fontSize: 11, color: t.textMuted, userSelect: 'none' }}>{emailDraftOpen ? '▲' : '▼'}</span>
                   </div>
-                  <textarea value={emailVal} onChange={e => updateSession(sel.id, { emailCarlo: e.target.value })}
-                    placeholder={`Pulsa "Generar desde reunión" para rellenar automáticamente,\no escribe tu borrador aquí. Copia y pega en tu cliente de correo.`} rows={10}
-                    style={{ width: '100%', fontSize: 12, color: t.text, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 5, padding: '7px 9px', resize: 'vertical', lineHeight: 1.6, outline: 'none', fontFamily: 'monospace' }} />
+                  {emailDraftOpen && (
+                    <div style={{ padding: '0 14px 14px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); updateSession(sel.id, { emailCarlo: generateEmail() }); }}
+                          style={{ background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 5, color: t.textMuted, fontSize: 10, fontWeight: 700, padding: '4px 10px', cursor: 'pointer' }}>
+                          ↻ Generar desde reunión
+                        </button>
+                      </div>
+                      <textarea value={emailVal} onChange={e => updateSession(sel.id, { emailCarlo: e.target.value })}
+                        placeholder={`Pulsa "Generar desde reunión" para rellenar automáticamente,\no escribe tu borrador aquí. Copia y pega en tu cliente de correo.`} rows={10}
+                        style={{ width: '100%', fontSize: 12, color: t.text, background: t.bgDeep, border: `1px solid ${t.border}`, borderRadius: 5, padding: '7px 9px', resize: 'vertical', lineHeight: 1.6, outline: 'none', fontFamily: 'monospace' }} />
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -3101,8 +3602,13 @@ function RevenueTab({ epics, revenue, setRevenue }) {
 
                   {/* Formula hint */}
                   {hasCalc && (
-                    <div style={{ marginTop: 10, fontSize: 10, color: t.textDim, fontFamily: 'monospace' }}>
-                      {fmtEur(Number(r.baseline))}/mes × {r.delta}% × {r.confidence}% confianza × 12 meses = <span style={{ color: '#22c55e', fontWeight: 700 }}>{fmtEur(r.estimate)}/año</span>
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 10, color: t.textDim, fontFamily: 'monospace' }}>
+                        {fmtEur(Number(r.baseline))}/mes × {r.delta}% × {r.confidence}% confianza × 12 meses = <span style={{ color: '#22c55e', fontWeight: 700 }}>{fmtEur(r.estimate)}/año</span>
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 10, color: '#f59e0b', background: '#f59e0b0d', border: '1px solid #f59e0b33', borderRadius: 5, padding: '5px 8px', lineHeight: 1.5 }}>
+                        ⚠ El % de confianza aquí es un <em>descuento subjetivo</em>, no valor esperado estadístico. Sirve para comparar iniciativas entre sí, no como forecast financiero presentable a terceros.
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3335,12 +3841,7 @@ function MetasTab({ goals, setGoals, logros, setLogros, config }) {
           🏅 LOGROS — PERSONAL (fórmula XYZ de Google)
           Solo visible si config.showLogros === true
       ══════════════════════════════════════════════════════════════════ */}
-      {!logrosEnabled ? (
-        <div style={{ marginTop: 28, borderTop: `1px solid ${t.border}`, paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, color: t.textDim, fontStyle: 'italic' }}>🏅 Sección Logros desactivada.</span>
-          <span style={{ fontSize: 11, color: t.textDim }}>Actívala en <strong style={{ color: t.textMuted }}>⚙️ Config → Privacidad</strong>.</span>
-        </div>
-      ) : (
+      {logrosEnabled && (
         <div style={{ marginTop: 32, borderTop: `2px solid ${t.border}`, paddingTop: 20 }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showLogros ? 14 : 0 }}>
@@ -3491,6 +3992,226 @@ function MetasTab({ goals, setGoals, logros, setLogros, config }) {
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ONBOARDING WIZARD — shown on first launch (no saved state in localStorage)
+// ═══════════════════════════════════════════════════════════════════════════════
+const TEAM_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#f43f5e','#22c55e','#ec4899','#f97316'];
+const QUARTER_PRESETS = {
+  Q1: { months: [0,2],  label: 'Q1', startDay: 2 },
+  Q2: { months: [3,5],  label: 'Q2', startDay: 1 },
+  Q3: { months: [6,8],  label: 'Q3', startDay: 1 },
+  Q4: { months: [9,11], label: 'Q4', startDay: 1 },
+};
+
+function OnboardingWizard({ onComplete }) {
+  const [step, setStep]       = useState(1);
+  const [company, setCompany] = useState('');
+  const [channel, setChannel] = useState('');
+  const [stakeholder, setStakeholder] = useState('');
+  const [quarter, setQuarter] = useState('Q2');
+  const [year, setYear]       = useState(new Date().getFullYear().toString());
+  const [members, setMembers] = useState([
+    { name: '', color: TEAM_COLORS[0], type: 'internal', note: '' },
+    { name: '', color: TEAM_COLORS[1], type: 'internal', note: '' },
+  ]);
+
+  const addMember = () => {
+    if (members.length >= 8) return;
+    setMembers(p => [...p, { name: '', color: TEAM_COLORS[p.length % TEAM_COLORS.length], type: 'internal', note: '' }]);
+  };
+  const updateMember = (i, field, val) => setMembers(p => p.map((m, idx) => idx === i ? { ...m, [field]: val } : m));
+  const removeMember = (i) => setMembers(p => p.filter((_, idx) => idx !== i));
+
+  const computeQuarterStart = () => {
+    const y = parseInt(year) || new Date().getFullYear();
+    const preset = QUARTER_PRESETS[quarter];
+    const d = new Date(y, preset.months[0], preset.startDay);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const handleFinish = () => {
+    const quarterStart = computeQuarterStart();
+    const newTeam = members
+      .filter(m => m.name.trim())
+      .map((m, i) => ({
+        id: m.name.toLowerCase().replace(/\s+/g, '-') + '-' + i,
+        name: m.name.trim(),
+        color: m.color,
+        since: '',
+        capMult: 1.0,
+        note: m.note.trim(),
+        type: m.type,
+        monthlyCost: 0, hourlyRate: 0, customSizes: null, absences: [],
+      }));
+    const newConfig = {
+      ...DEFAULT_CONFIG,
+      companyName: company.trim() || 'My Company',
+      channelName: channel.trim() || 'My Channel',
+      stakeholderName: stakeholder.trim() || 'Stakeholder',
+      carloViewLabel: `Vista de ${stakeholder.trim() || 'Stakeholder'}`,
+      quarterLabel: quarter,
+      quarterYear: year,
+      quarterStart,
+      columnNames: { confirmed: quarter, deciding: quarter, deferred: 'Diferidas' },
+    };
+    onComplete({ team: newTeam, config: newConfig });
+  };
+
+  const C = {
+    bg: '#0f172a', bgAlt: '#1e293b', bgCard: '#162033', border: '#334155',
+    text: '#e2e8f0', muted: '#94a3b8', accent: '#3b82f6', heading: '#f8fafc',
+  };
+  const btnPrimary = { background: C.accent, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 24px', cursor: 'pointer' };
+  const btnSecondary = { background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontWeight: 600, fontSize: 13, padding: '10px 24px', cursor: 'pointer' };
+  const inputStyle = { width: '100%', background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 7, color: C.text, fontSize: 13, padding: '9px 13px', outline: 'none', boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5, display: 'block' };
+
+  const TOTAL_STEPS = 3;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans', sans-serif" }}>
+      <div style={{ width: '100%', maxWidth: 520, background: C.bgAlt, borderRadius: 16, padding: '40px 44px', border: `1px solid ${C.border}` }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 4, marginBottom: 10 }}>
+            PI PLANNING LITE · Paso {step} de {TOTAL_STEPS}
+          </div>
+          <div style={{ width: '100%', height: 3, background: C.bgCard, borderRadius: 2, marginBottom: 20 }}>
+            <div style={{ width: `${(step / TOTAL_STEPS) * 100}%`, height: '100%', background: C.accent, borderRadius: 2, transition: 'width 0.3s' }} />
+          </div>
+          {step === 1 && <div style={{ fontSize: 22, fontWeight: 800, color: C.heading }}>Configura tu proyecto</div>}
+          {step === 2 && <div style={{ fontSize: 22, fontWeight: 800, color: C.heading }}>Tu equipo</div>}
+          {step === 3 && <div style={{ fontSize: 22, fontWeight: 800, color: C.heading }}>El quarter</div>}
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+            {step === 1 && 'Nombre de tu empresa, producto y el stakeholder principal al que reportas.'}
+            {step === 2 && 'Añade los miembros del equipo. Podrás modificarlos después en el tab Capacidad.'}
+            {step === 3 && 'Define el quarter y la fecha de inicio para calcular los sprints automáticamente.'}
+          </div>
+        </div>
+
+        {/* Step 1 — Project basics */}
+        {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div>
+              <label style={labelStyle}>Empresa / Organización</label>
+              <input style={inputStyle} value={company} onChange={e => setCompany(e.target.value)} placeholder="Ej: Acme Corp, Startup Labs..." />
+            </div>
+            <div>
+              <label style={labelStyle}>Producto / Canal</label>
+              <input style={inputStyle} value={channel} onChange={e => setChannel(e.target.value)} placeholder="Ej: Mobile App, E-commerce, Plataforma SaaS..." />
+            </div>
+            <div>
+              <label style={labelStyle}>Stakeholder principal <span style={{ color: C.muted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— la persona a quien presentas</span></label>
+              <input style={inputStyle} value={stakeholder} onChange={e => setStakeholder(e.target.value)} placeholder="Ej: Ana (CPO), Marco (CEO), Director de Producto..." />
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Team */}
+        {step === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {members.map((m, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="color"
+                  value={m.color}
+                  onChange={e => updateMember(i, 'color', e.target.value)}
+                  style={{ width: 32, height: 32, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'none', padding: 0 }}
+                />
+                <input
+                  style={{ ...inputStyle, flex: 2 }}
+                  value={m.name}
+                  onChange={e => updateMember(i, 'name', e.target.value)}
+                  placeholder={`Miembro ${i + 1} — nombre`}
+                />
+                <select
+                  value={m.type}
+                  onChange={e => updateMember(i, 'type', e.target.value)}
+                  style={{ ...inputStyle, flex: 1, width: 'auto' }}
+                >
+                  <option value="internal">Interno</option>
+                  <option value="external">Externo</option>
+                </select>
+                {members.length > 1 && (
+                  <button onClick={() => removeMember(i)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                )}
+              </div>
+            ))}
+            {members.length < 8 && (
+              <button onClick={addMember} style={{ ...btnSecondary, marginTop: 4, textAlign: 'left', width: 'fit-content', fontSize: 12 }}>
+                + Añadir miembro
+              </button>
+            )}
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+              Puedes saltarte este paso y añadir el equipo desde el tab Capacidad más tarde.
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — Quarter */}
+        {step === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Quarter</label>
+                <select style={inputStyle} value={quarter} onChange={e => setQuarter(e.target.value)}>
+                  <option value="Q1">Q1</option>
+                  <option value="Q2">Q2</option>
+                  <option value="Q3">Q3</option>
+                  <option value="Q4">Q4</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Año</label>
+                <input style={inputStyle} value={year} onChange={e => setYear(e.target.value)} placeholder="2026" />
+              </div>
+            </div>
+            <div style={{ background: C.bgCard, borderRadius: 8, padding: '14px 16px', border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>Inicio calculado: <span style={{ color: C.text, fontWeight: 600 }}>{computeQuarterStart()}</span></div>
+              <div style={{ fontSize: 11, color: C.muted }}>
+                El tool generará 7 sprints de 2 semanas a partir de esa fecha. Podrás ajustar las fechas exactas desde el panel de Config.
+              </div>
+            </div>
+            <div style={{ background: '#0c2340', borderRadius: 8, padding: '14px 16px', border: '1px solid #1e3a6e' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#93c5fd', marginBottom: 4 }}>¡Todo listo!</div>
+              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+                Al hacer clic en <strong style={{ color: '#e2e8f0' }}>Empezar</strong> se configurará tu herramienta con:
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span>🏢 <strong style={{ color: '#e2e8f0' }}>{company || 'My Company'}</strong> · {channel || 'My Channel'}</span>
+                  <span>👤 Stakeholder: <strong style={{ color: '#e2e8f0' }}>{stakeholder || 'Stakeholder'}</strong></span>
+                  <span>📅 <strong style={{ color: '#e2e8f0' }}>{quarter} {year}</strong> — {members.filter(m=>m.name.trim()).length} miembro(s)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
+          <div>
+            {step > 1 && <button style={btnSecondary} onClick={() => setStep(p => p - 1)}>← Atrás</button>}
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {step === 2 && <button style={{ ...btnSecondary, fontSize: 12 }} onClick={() => setStep(3)}>Saltar →</button>}
+            {step < TOTAL_STEPS && (
+              <button style={btnPrimary} onClick={() => setStep(p => p + 1)} disabled={step === 1 && !company.trim() && !channel.trim()}>
+                Siguiente →
+              </button>
+            )}
+            {step === TOTAL_STEPS && (
+              <button style={{ ...btnPrimary, background: '#22c55e' }} onClick={handleFinish}>
+                ✓ Empezar
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3506,7 +4227,7 @@ function App() {
     return m;
   });
   const savedV4 = parseLS(LS_KEY);
-  const savedV3 = parseLS('pi-planning-q2-2026-v3');
+  const savedV3 = null; // no legacy migration in template
   // Use v4 only if it was explicitly saved by this app (has _migrated flag).
   // Otherwise fall back to v3 — v4 may have been written with default data
   // before the migration code was in place.
@@ -3516,19 +4237,18 @@ function App() {
     return savedV4 || {};
   })();
 
-  // Migrate epics: ensure bag-of-things epics have noProgress by default
-  const migrateEpics = (rawEpics) => rawEpics.map(e => {
-    if ((e.label === 'SEO Improvement' || e.label === 'Deuda Técnica') && e.noProgress === undefined) {
-      return { ...e, noProgress: true };
-    }
-    return e;
-  });
+  // Migrate epics: ensure all epics have required fields
+  const migrateEpics = (rawEpics) => rawEpics.map(e => ({ ...e }));
 
   const [tab, setTab] = useState('epicas');
+  const [showConfig, setShowConfig] = useState(false);
   const [jumpToEpicId, setJumpToEpicId] = useState(null);
   const [demoMode, setDemoMode] = useState('off'); // 'off' | 'replace' | 'blur'
   const [epics, setEpics] = useState(migrateEpics(saved.epics || INITIAL_EPICS));
   const [team, setTeam] = useState(saved.team || INITIAL_TEAM);
+  const [stakeholders, setStakeholders] = useState(saved.stakeholders || INITIAL_STAKEHOLDERS);
+  const [sprintVelocity, setSprintVelocity] = useState(saved.sprintVelocity || {});
+  const [closedSprints, setClosedSprints] = useState(saved.closedSprints || {});
   const [agenda, setAgenda] = useState(saved.agenda || INITIAL_AGENDA);
   const [okrs, setOkrs] = useState(saved.okrs || INITIAL_OKRS);
   const [weeklySync, setWeeklySync] = useState(saved.weeklySync || INITIAL_WEEKLY_SYNCS);
@@ -3537,16 +4257,42 @@ function App() {
   const [logros, setLogros] = useState(saved.logros || INITIAL_LOGROS);
   const [theme, setTheme] = useState(saved.theme || 'light');
   // Merge saved config with DEFAULT_CONFIG so new keys always get their defaults
-  const [config, setConfig] = useState({ ...DEFAULT_CONFIG, ...(saved.config || {}) });
-  const [sidebar, setSidebar] = useState(true);
+  const [config, setConfig] = useState(() => {
+    const c = { ...DEFAULT_CONFIG, ...(saved.config || {}) };
+    if (c.quarterStart) applyQuarterStart(c.quarterStart);
+    return c;
+  });
+  // Show onboarding if no saved state exists (first launch)
+  const isFirstLaunch = !saved || !saved._migrated;
+  const [showOnboarding, setShowOnboarding] = useState(isFirstLaunch);
+
+  const handleOnboardingComplete = ({ team: newTeam, config: newConfig }) => {
+    setTeam(newTeam);
+    setConfig(newConfig);
+    if (newConfig.quarterStart) applyQuarterStart(newConfig.quarterStart);
+    setShowOnboarding(false);
+  };
+
+  const [sidebar, setSidebar] = useState(false);
   const [showCosts, setShowCosts] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
   const titleTimer = useRef(null);
 
+  // ── Always sync SPRINT_DATES before render ────────────────────────────────
+  // applyQuarterStart mutates a global array (not React state), so React can't
+  // detect the change. Calling it here on every render is the safest approach:
+  // it guarantees the Timeline and Capacity components always see correct dates.
+  if (config.quarterStart) applyQuarterStart(config.quarterStart);
+
+  // ── Re-apply quarter start when config changes (belt-and-suspenders) ─────
+  useEffect(() => {
+    if (config.quarterStart) applyQuarterStart(config.quarterStart);
+  }, [config.quarterStart]);
+
   // ── Persist to localStorage on every change ───────────────────────────────
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify({ epics, team, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, _migrated: true }));
-  }, [epics, team, agenda, okrs, weeklySync, revenue, goals, logros, config, theme]);
+    localStorage.setItem(LS_KEY, JSON.stringify({ epics, team, stakeholders, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, sprintVelocity, closedSprints, _migrated: true }));
+  }, [epics, team, stakeholders, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, sprintVelocity, closedSprints]);
 
   const handleTitleDblClick = () => {
     setShowCosts(p => !p);
@@ -3561,12 +4307,14 @@ function App() {
   const { total: cap } = teamCap(team, config);
   const pct = cap > 0 ? Math.round((load / cap) * 100) : 0;
   const globalConf = weightedConfidence(active, config);
+  const totalHUs = active.reduce((s, e) => s + e.stories.length, 0);
+  const doneHUs  = active.reduce((s, e) => s + e.stories.filter(st => st.done).length, 0);
 
   const exportState = () => {
-    const state = { epics, team, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, _exported: new Date().toISOString() };
+    const state = { epics, team, stakeholders, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, sprintVelocity, _exported: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'pi-planning-q2-2026-state.json'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = `pi-planning-${(config.channelName || 'state').toLowerCase().replace(/\s+/g,'-')}.json`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -3575,23 +4323,29 @@ function App() {
     reader.onload = (ev) => {
       try {
         const s = JSON.parse(ev.target.result);
+        // Apply sprint dates BEFORE state updates so the next render uses correct SPRINT_DATES.
+        // (applyQuarterStart mutates the global SPRINT_DATES array synchronously.)
+        if (s.config && s.config.quarterStart) applyQuarterStart(s.config.quarterStart);
         if (s.epics) setEpics(s.epics);
         if (s.team) setTeam(s.team);
         if (s.agenda) setAgenda(s.agenda);
         if (s.okrs) setOkrs(s.okrs);
-        if (s.config) setConfig(s.config);
+        // Merge imported config with DEFAULT_CONFIG so no keys are lost
+        if (s.config) setConfig({ ...DEFAULT_CONFIG, ...s.config });
         if (s.theme) setTheme(s.theme);
         if (s.weeklySync) setWeeklySync(s.weeklySync);
         if (s.revenue) setRevenue(s.revenue);
         if (s.goals)  setGoals(s.goals);
         if (s.logros) setLogros(s.logros);
+        if (s.stakeholders) setStakeholders(s.stakeholders);
+        if (s.sprintVelocity) setSprintVelocity(s.sprintVelocity);
       } catch (err) { alert('Error al importar: ' + err.message); }
     };
     reader.readAsText(file);
   };
 
   const manualSave = () => {
-    localStorage.setItem(LS_KEY, JSON.stringify({ epics, team, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, _migrated: true }));
+    localStorage.setItem(LS_KEY, JSON.stringify({ epics, team, stakeholders, agenda, okrs, weeklySync, revenue, goals, logros, config, theme, sprintVelocity, closedSprints, _migrated: true }));
     setSaveFlash(true);
     setTimeout(() => setSaveFlash(false), 1800);
   };
@@ -3612,11 +4366,10 @@ function App() {
     { id: 'semanal',   label: '📋 Semanal' },
     { id: 'revenue',   label: '📈 Revenue' },
     { id: 'metas',     label: '🏆 Metas' },
-    { id: 'config',    label: '⚙️ Config' },
   ];
   if (showCosts) ALL_TABS.push({ id: 'costs', label: '💰 Costos' });
   const hiddenTabs = config.hiddenTabs || [];
-  const tabs = ALL_TABS.filter(tb => tb.id === 'config' || !hiddenTabs.includes(tb.id));
+  const tabs = ALL_TABS.filter(tb => !hiddenTabs.includes(tb.id));
 
   // ── Demo mode display data (never mutates real state) ──────────────────────
   const displayEpics = demoMode === 'replace' ? demoifyEpics(epics) : epics;
@@ -3630,16 +4383,24 @@ function App() {
 
   return (
     <ThemeContext.Provider value={t}>
+      {showOnboarding && <OnboardingWizard onComplete={handleOnboardingComplete} />}
       <div className={blurClass} style={{ background: t.bg, height: '100vh', display: 'flex', flexDirection: 'column', color: t.text, fontFamily: "'Noto Sans', sans-serif" }}>
         {/* Header */}
         <div style={{ background: t.bgAlt, borderBottom: `1px solid ${t.border}`, padding: '8px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, flexShrink: 0 }}>
           <div onDoubleClick={handleTitleDblClick} style={{ cursor: 'default', userSelect: 'none' }}>
-            <div className="demo-sensitive" style={{ fontSize: 8, color: t.textDim, textTransform: 'uppercase', letterSpacing: 1 }}>Giunti Psychometrics · Magento IT</div>
-            <h1 className="demo-sensitive" style={{ fontSize: 16, fontWeight: 700, color: t.heading, lineHeight: 1.2 }}>PI Planning Lite — Q2 2026</h1>
+            <div className="demo-sensitive" style={{ fontSize: 8, color: t.textDim, textTransform: 'uppercase', letterSpacing: 1 }}>{config.companyName || 'My Company'} · {config.channelName || 'My Channel'}</div>
+            <h1 className="demo-sensitive" style={{ fontSize: 16, fontWeight: 700, color: t.heading, lineHeight: 1.2 }}>PI Planning Lite — {config.quarterLabel || 'Q?'} {config.quarterYear || ''}</h1>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <Stat label="Épicas Q2" value={confirmed} color="#3b82f6" />
-            <Stat label="Carga" value={`${pct}%`} color={pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e'} />
+            {/* Carga — mismo tratamiento visual que Stat: número → barra fina → label */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e', lineHeight: 1 }}>{pct}%</div>
+              <div style={{ width: 48, height: 4, background: t.bgDeep, borderRadius: 2, margin: '4px auto 3px', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e', borderRadius: 2, transition: 'width 0.4s' }} />
+              </div>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Carga</div>
+            </div>
             <Stat label="Confianza" value={`${globalConf}%`} color={confColor(globalConf)} />
             <div style={{ textAlign: 'right', fontSize: 10, color: t.textFaint, lineHeight: 1.4 }}>
               <div>Sprint cierra <span style={{ color: '#f59e0b', fontWeight: 700 }}>27 mar</span></div>
@@ -3651,6 +4412,9 @@ function App() {
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: 5, color: t.text, fontSize: 14, cursor: 'pointer', padding: '3px 7px' }}
               title="Cambiar tema">{theme === 'dark' ? '☀️' : '🌙'}</button>
+            <button onClick={() => setShowConfig(p => !p)}
+              style={{ background: showConfig ? t.accent + '22' : t.bg, border: `1px solid ${showConfig ? t.accent : t.border}`, borderRadius: 5, color: showConfig ? t.accent : t.textMuted, fontSize: 15, cursor: 'pointer', padding: '3px 7px' }}
+              title="Configuración">⚙️</button>
           </div>
         </div>
 
@@ -3667,19 +4431,50 @@ function App() {
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
           <Sidebar agenda={agenda} setAgenda={setAgenda} open={sidebar} onToggle={() => setSidebar(!sidebar)} />
-          <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-            {tab === 'epicas' && <KanbanTab epics={displayEpics} setEpics={setEpics} team={displayTeam} theme={theme} config={config} jumpToEpicId={jumpToEpicId} onJumpHandled={() => setJumpToEpicId(null)} />}
-            {tab === 'capacidad' && <CapacidadTab epics={displayEpics} team={displayTeam} config={config} />}
-            {tab === 'timeline' && <TimelineTab epics={displayEpics} setEpics={setEpics} team={displayTeam} config={config} onNavigateToEpic={(id) => { setTab('epicas'); setJumpToEpicId(id); }} />}
-            {tab === 'okrs' && <OKRsTab okrs={displayOkrs} setOkrs={setOkrs} epics={displayEpics} team={displayTeam} />}
-            {tab === 'semanal' && <SemanalTab weeklySync={weeklySync} setWeeklySync={setWeeklySync} team={displayTeam} epics={displayEpics} />}
-            {tab === 'revenue' && <RevenueTab epics={displayEpics} revenue={revenue} setRevenue={setRevenue} />}
-            {tab === 'metas'   && <MetasTab goals={goals} setGoals={setGoals} logros={logros} setLogros={setLogros} config={config} />}
-            {tab === 'config' && <ConfigPanel config={config} setConfig={setConfig} team={team} setTeam={setTeam} exportState={exportState} importState={importState} resetToDefaults={resetToDefaults} demoMode={demoMode} setDemoMode={setDemoMode} />}
-            {tab === 'costs' && showCosts && <CostPanel team={team} setTeam={setTeam} config={config} setConfig={setConfig} epics={epics} />}
+          {/* All tabs always mounted — display:none preserves scroll + UI state when switching */}
+          <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            <div style={{ display: tab === 'epicas' ? 'block' : 'none', padding: 16 }}>
+              <KanbanTab epics={displayEpics} setEpics={setEpics} team={displayTeam} stakeholders={stakeholders} theme={theme} config={config} jumpToEpicId={jumpToEpicId} onJumpHandled={() => setJumpToEpicId(null)} />
+            </div>
+            <div style={{ display: tab === 'capacidad' ? 'block' : 'none', padding: 16 }}>
+              <CapacidadTab epics={displayEpics} team={displayTeam} config={config} sprintVelocity={sprintVelocity} setSprintVelocity={setSprintVelocity} closedSprints={closedSprints} setClosedSprints={setClosedSprints} />
+            </div>
+            <div style={{ display: tab === 'timeline' ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
+              <TimelineTab epics={displayEpics} setEpics={setEpics} team={displayTeam} stakeholders={stakeholders} config={config} onNavigateToEpic={(id) => { setTab('epicas'); setJumpToEpicId(id); }} closedSprints={closedSprints} />
+            </div>
+            <div style={{ display: tab === 'okrs' ? 'block' : 'none', padding: 16 }}>
+              <OKRsTab okrs={displayOkrs} setOkrs={setOkrs} epics={displayEpics} team={displayTeam} />
+            </div>
+            <div style={{ display: tab === 'semanal' ? 'block' : 'none', padding: 16 }}>
+              <SemanalTab weeklySync={weeklySync} setWeeklySync={setWeeklySync} team={displayTeam} epics={displayEpics} config={config} />
+            </div>
+            <div style={{ display: tab === 'revenue' ? 'block' : 'none', padding: 16 }}>
+              <RevenueTab epics={displayEpics} revenue={revenue} setRevenue={setRevenue} />
+            </div>
+            <div style={{ display: tab === 'metas' ? 'block' : 'none', padding: 16 }}>
+              <MetasTab goals={goals} setGoals={setGoals} logros={logros} setLogros={setLogros} config={config} />
+            </div>
+            {showCosts && (
+              <div style={{ display: tab === 'costs' ? 'block' : 'none', padding: 16 }}>
+                <CostPanel team={team} setTeam={setTeam} config={config} setConfig={setConfig} epics={epics} />
+              </div>
+            )}
           </div>
+
+          {/* ── Config full-screen overlay ────────────────────────────── */}
+          {showConfig && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: t.bg, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: `1px solid ${t.border}`, background: t.bgAlt, flexShrink: 0 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: t.heading }}>⚙️ Configuración</span>
+                <button onClick={() => setShowConfig(false)} style={{ background: 'none', border: `1px solid ${t.border}`, borderRadius: 6, color: t.textMuted, cursor: 'pointer', fontSize: 14, padding: '3px 10px' }}>✕ Cerrar</button>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '20px 32px' }}>
+                <ConfigPanel config={config} setConfig={setConfig} team={team} setTeam={setTeam} stakeholders={stakeholders} setStakeholders={setStakeholders} exportState={exportState} importState={importState} resetToDefaults={resetToDefaults} demoMode={demoMode} setDemoMode={setDemoMode} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </ThemeContext.Provider>
